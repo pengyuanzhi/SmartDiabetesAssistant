@@ -10,7 +10,128 @@ import platform
 import asyncio
 from pathlib import Path
 import time
+import os
 from typing import List, Dict
+
+
+def get_tts_cache_dir():
+    """
+    获取TTS模型缓存目录
+
+    Returns:
+        Path: TTS缓存目录路径
+    """
+    system = platform.system()
+
+    if system == "Windows":
+        # Windows: C:\Users\<username>\AppData\Local\tts\
+        cache_dir = Path(os.environ.get('LOCALAPPDATA', '')) / 'tts'
+    elif system == "Darwin":  # macOS
+        # macOS: ~/.local/share/tts/
+        cache_dir = Path.home() / '.local' / 'share' / 'tts'
+    else:  # Linux
+        # Linux: ~/.local/share/tts/
+        cache_dir = Path.home() / '.local' / 'share' / 'tts'
+
+    return cache_dir
+
+
+def check_model_cached(model_name: str) -> bool:
+    """
+    检查模型是否已缓存
+
+    Args:
+        model_name: 模型名称（如 "tts_models/zh-CN/baker/tacotron2-DDC-GST"）
+
+    Returns:
+        bool: 模型是否已缓存
+    """
+    cache_dir = get_tts_cache_dir()
+
+    # 将模型名称转换为缓存路径
+    # 例如: tts_models/zh-CN/baker/tacotron2-DDC-GST
+    # 缓存为: --tts_models--zh-CN--baker--tacotron2-DDC-GST
+    cache_name = model_name.replace('/', '--')
+
+    # 检查多个可能的缓存位置
+    possible_paths = [
+        cache_dir / cache_name,
+        cache_dir / f"{cache_name}.pth",
+        cache_dir / f"{cache_name}.pt",
+    ]
+
+    for path in possible_paths:
+        if path.exists():
+            return True
+
+    # 检查目录是否存在
+    model_dir = cache_dir / cache_name
+    if model_dir.exists() and list(model_dir.iterdir()):
+        return True
+
+    return False
+
+
+def get_model_size(model_name: str) -> float:
+    """
+    获取模型缓存大小（MB）
+
+    Args:
+        model_name: 模型名称
+
+    Returns:
+        float: 模型大小（MB）
+    """
+    cache_dir = get_tts_cache_dir()
+    cache_name = model_name.replace('/', '--')
+    model_dir = cache_dir / cache_name
+
+    if not model_dir.exists():
+        return 0.0
+
+    total_size = 0
+    for file in model_dir.rglob('*'):
+        if file.is_file():
+            total_size += file.stat().st_size
+
+    return total_size / (1024 * 1024)  # 转换为MB
+
+
+def list_cached_models():
+    """列出所有已缓存的模型"""
+    cache_dir = get_tts_cache_dir()
+
+    if not cache_dir.exists():
+        print("[提示] TTS缓存目录不存在")
+        return []
+
+    print(f"\n[信息] TTS缓存目录: {cache_dir}\n")
+
+    cached_models = []
+
+    # 查找所有模型目录
+    for model_dir in cache_dir.iterdir():
+        if model_dir.is_dir() and model_dir.name.startswith('--'):
+            # 将缓存名称转换回模型名称
+            model_name = model_dir.name.replace('--', '/')
+            size = get_model_size(model_name)
+
+            cached_models.append({
+                'name': model_name,
+                'size': size,
+                'path': model_dir
+            })
+
+    if cached_models:
+        print(f"已缓存的模型 ({len(cached_models)}个):\n")
+        for model in sorted(cached_models, key=lambda x: x['name']):
+            print(f"  - {model['name']}")
+            print(f"    大小: {model['size']:.1f} MB")
+            print()
+    else:
+        print("[提示] 未找到已缓存的模型\n")
+
+    return cached_models
 
 
 def test_audio_devices():
@@ -261,12 +382,40 @@ def test_coqui_tts():
     try:
         from TTS.api import TTS
 
-        # 初始化TTS（使用单语言模型，避免multi-speaker问题）
-        print("正在加载Coqui TTS模型...")
-        print("提示: 首次运行会自动下载模型（约50MB）")
-
-        # 使用中文单语言模型（不需要speaker参数）
+        # 使用中文单语言模型（避免multi-speaker问题）
         model_name = "tts_models/zh-CN/baker/tacotron2-DDC-GST"
+
+        # 检查模型是否已缓存
+        is_cached = check_model_cached(model_name)
+
+        if is_cached:
+            model_size = get_model_size(model_name)
+            print(f"[信息] 模型已缓存")
+            print(f"  模型: {model_name}")
+            print(f"  大小: {model_size:.1f} MB")
+            print()
+        else:
+            print(f"[信息] 模型未缓存")
+            print(f"  模型: {model_name}")
+            print(f"  预计大小: ~50 MB")
+            print()
+
+            # 询问是否下载
+            try:
+                choice = input("是否下载模型? (y/N): ").strip().lower()
+                if choice not in ['y', 'yes']:
+                    print("[跳过] 取消Coqui TTS测试")
+                    print("[提示] 使用系统TTS (pyttsx3) 进行开发")
+                    return False
+            except (EOFError, KeyboardInterrupt):
+                print("\n[跳过] 取消Coqui TTS测试")
+                return False
+
+        # 初始化TTS
+        print("正在加载Coqui TTS模型...")
+        if not is_cached:
+            print("提示: 首次运行会自动下载模型，可能需要几分钟...")
+
         tts = TTS(model_name=model_name, progress_bar=True, gpu=False)
 
         # 测试语音合成
@@ -280,6 +429,10 @@ def test_coqui_tts():
         )
 
         print(f"[成功] 语音已保存到: {output_path}")
+
+        # 显示文件大小
+        file_size = Path(output_path).stat().st_size / 1024  # KB
+        print(f"文件大小: {file_size:.1f} KB")
 
         # 播放合成的音频
         try:
@@ -591,7 +744,16 @@ def main():
         print("\n跳过系统TTS测试")
         system_tts_ok = False
 
-    # 3. 测试Coqui TTS（可选）
+    # 3. 列出TTS模型缓存（信息）
+    print("\n" + "=" * 60)
+    try:
+        choice = input("是否查看TTS模型缓存? (y/N): ").strip().lower()
+        if choice == 'y' or choice == 'yes':
+            list_cached_models()
+    except (EOFError, KeyboardInterrupt):
+        print("\n跳过缓存查看")
+
+    # 4. 测试Coqui TTS（可选）
     print("\n" + "=" * 60)
     try:
         choice = input("是否测试Coqui TTS？（需要下载模型，约50MB）(y/N): ").strip().lower()
