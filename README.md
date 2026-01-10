@@ -1,5 +1,14 @@
 # 智能糖尿病胰岛素注射监测系统
 
+> [!IMPORTANT]
+> **Windows用户请注意**: 在PC上开发调试时，请使用 `requirements-pc.txt` 而不是 `requirements.txt`。
+>
+> ```bash
+> pip install -r requirements-pc.txt  # Windows/Linux/macOS PC端开发
+> pip install -r requirements-jetson.txt  # NVIDIA Jetson Orin Nano部署
+> pip install -r requirements-pi.txt  # Raspberry Pi部署
+> ```
+
 ## 项目概述
 
 本项目是一个基于边端AI的智能糖尿病胰岛素注射监测系统，通过实时图像识别技术监测患者注射操作的规范性，并提供语音、震动、视觉等多重反馈。

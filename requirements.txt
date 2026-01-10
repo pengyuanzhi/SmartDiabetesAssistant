@@ -1,8 +1,13 @@
+# 重要提示: 此文件用于生产硬件部署
+# PC端开发请使用: requirements-pc.txt
+# Jetson部署请使用: requirements-jetson.txt
+# Raspberry Pi部署请使用: requirements-pi.txt
+
 # 深度学习框架
 torch>=2.0.0
 torchvision>=0.15.0
-tensorrt>=8.6.0  # Jetson平台
-tflite-runtime>=2.13.0  # Raspberry Pi平台
+tensorrt>=8.6.0  # Jetson平台专用
+tflite-runtime>=2.13.0  # Raspberry Pi平台专用
 onnx>=1.14.0
 onnxruntime>=1.15.0
 
