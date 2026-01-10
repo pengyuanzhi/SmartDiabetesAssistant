@@ -53,7 +53,7 @@ def test_camera(camera_id: int, duration: int = 10):
     cap = cv2.VideoCapture(camera_id)
 
     if not cap.isOpened():
-        print(f"❌ 无法打开摄像头 {camera_id}")
+        print(f"[错误] 无法打开摄像头 {camera_id}")
         return False
 
     # 设置分辨率
@@ -75,7 +75,7 @@ def test_camera(camera_id: int, duration: int = 10):
         ret, frame = cap.read()
 
         if not ret:
-            print("❌ 无法读取帧")
+            print("[错误] 无法读取帧")
             break
 
         frame_count += 1
@@ -129,7 +129,7 @@ def main():
     available_cameras = list_cameras()
 
     if not available_cameras:
-        print("\n❌ 未检测到可用的摄像头")
+        print("\n[错误] 未检测到可用的摄像头")
         print("请检查:")
         print("  1. 摄像头是否已连接")
         print("  2. 摄像头驱动是否已安装")
@@ -155,10 +155,10 @@ def main():
     success = test_camera(camera_id)
 
     if success:
-        print("\n✅ 摄像头测试完成")
+        print("\n[成功] 摄像头测试完成")
         print(f"\n运行主程序使用: python src/main.py --camera {camera_id}")
     else:
-        print("\n❌ 摄像头测试失败")
+        print("\n[失败] 摄像头测试失败")
 
 
 if __name__ == "__main__":
