@@ -1,0 +1,46 @@
+# Raspberry Pi 平台依赖
+
+# 深度学习
+torch>=2.0.0
+torchvision>=0.15.0
+tflite-runtime>=2.13.0
+onnx>=1.14.0
+onnxruntime>=1.15.0
+
+# 计算机视觉
+opencv-python>=4.8.0
+pillow>=10.0.0
+scikit-image>=0.21.0
+
+# 目标检测
+ultralytics>=8.0.0
+
+# 语音处理
+TTS>=0.22.0  # 轻量级TTS
+pyaudio>=0.2.13
+sounddevice>=0.4.6
+
+# 硬件控制
+gpiozero>=1.6.2
+RPi.GPIO>=0.7.1
+smbus2>=0.4.2
+spidev>=3.5
+
+# LangChain框架
+langchain>=0.1.0
+langgraph>=0.0.20
+langchain-core>=0.1.0
+
+# 数据处理
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.11.0
+
+# 其他依赖
+asyncio>=3.4.3
+aiofiles>=23.0.0
+sqlalchemy>=2.0.0
+pydantic>=2.0.0
+pyyaml>=6.0.0
+python-dotenv>=1.0.0
+loguru>=0.7.0

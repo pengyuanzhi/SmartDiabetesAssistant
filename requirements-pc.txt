@@ -1,11 +1,11 @@
-# PC端开发调试依赖（精简版）
+# PC端开发调试依赖（Windows/Linux/macOS）
 
 # 核心框架
 langchain>=0.1.0
 langgraph>=0.0.20
 langchain-core>=0.1.0
 
-# 深度学习（CPU版本，PC调试用）
+# 深度学习（使用ONNX Runtime，跨平台）
 torch>=2.0.0
 torchvision>=0.15.0
 onnx>=1.14.0
@@ -16,15 +16,16 @@ opencv-python>=4.8.0
 pillow>=10.0.0
 scikit-image>=0.21.0
 
-# 目标检测和姿态估计
-ultralytics>=8.0.0
-mmpose>=1.0.0
-mmdet>=3.0.0
+# 目标检测和姿态估计（使用OpenMMLab系列）
 openmim>=0.3.0
+# 注意：mmpose和mmdet需要通过openmim安装
+# 在安装此文件后运行: mim install mmpose mmdet
+
+ultralytics>=8.0.0  # YOLOv8
 
 # 语音处理（使用系统TTS）
 pyttsx3>=2.90  # 跨平台TTS包装器
-pyaudio>=0.2.13
+pyaudio>=0.2.13  # 可能需要额外安装PortAudio
 
 # 数据处理
 numpy>=1.24.0
@@ -56,3 +57,9 @@ flake8>=6.0.0
 # 可视化和调试
 matplotlib>=3.7.0
 tqdm>=4.65.0
+
+# 注意事项：
+# 1. tensorrt 仅在 Jetson 设备上可用
+# 2. tflite-runtime 仅在 Linux ARM 上可用
+# 3. 硬件相关库（gpiozero, RPi.GPIO）仅在 Raspberry Pi 上需要
+# 4. 如需完整功能，请在实际硬件上使用 requirements.txt
