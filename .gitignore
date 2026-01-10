@@ -1,0 +1,229 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+# 模型文件（通常很大，不建议提交到git）
+models/*.trt
+models/*.pth
+models/*.pt
+models/*.onnx
+models/*.engine
+models/*.pb
+
+# 数据文件
+data/videos/*.mp4
+data/videos/*.avi
+data/videos/*.mov
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/cache/
+data/temp/
+data/raw/
+
+# 日志文件
+logs/
+*.log
+*.log.*
+debug.log
+error.log
+
+# 测试和覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# 操作系统
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 配置文件（包含敏感信息）
+.env.local
+.env.*.local
+config/secrets.yaml
+config/credentials.yaml
+
+# 导出和备份
+*.backup
+*.bak
+*.export
+
+# 编译文件
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.pyc
+*.pyd
+
+# 文档生成
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# 性能分析
+*.prof
+*.cprof
+*.profile
+
+# 其他
+.prompt/
+.cache/
