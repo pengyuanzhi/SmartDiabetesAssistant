@@ -1,41 +1,31 @@
-# 重要提示: 此文件用于生产硬件部署
-# PC端开发请使用: requirements-pc.txt
-# Jetson部署请使用: requirements-jetson.txt
-# Raspberry Pi部署请使用: requirements-pi.txt
+# PC端开发调试依赖（Windows/Linux/macOS）
 
-# 深度学习框架
+# 核心框架
+langchain>=0.1.0
+langgraph>=0.0.20
+langchain-core>=0.1.0
+
+# 深度学习（使用ONNX Runtime，跨平台）
 torch>=2.0.0
 torchvision>=0.15.0
-tensorrt>=8.6.0  # Jetson平台专用
-tflite-runtime>=2.13.0  # Raspberry Pi平台专用
 onnx>=1.14.0
 onnxruntime>=1.15.0
 
 # 计算机视觉
 opencv-python>=4.8.0
-opencv-contrib-python>=4.8.0
 pillow>=10.0.0
 scikit-image>=0.21.0
-mmpose>=1.0.0  # RTMPose
-mmdet>=3.0.0  # YOLOv8依赖
+
+# 目标检测和姿态估计（使用OpenMMLab系列）
+openmim>=0.3.0
+# 注意：mmpose和mmdet需要通过openmim安装
+# 在安装此文件后运行: mim install mmpose mmdet
+
 ultralytics>=8.0.0  # YOLOv8
 
-# 语音处理
-TTS>=0.22.0  # Coqui TTS
-pyaudio>=0.2.13
-sounddevice>=0.4.6
-pydub>=0.25.0
-
-# 硬件控制
-gpiozero>=1.6.2  # Raspberry Pi GPIO
-RPi.GPIO>=0.7.1  # 备用GPIO库
-smbus2>=0.4.2  # I2C通信
-spidev>=3.5  # SPI通信
-
-# LangChain框架
-langchain>=0.1.0
-langgraph>=0.0.20
-langchain-core>=0.1.0
+# 语音处理（使用系统TTS）
+pyttsx3>=2.90  # 跨平台TTS包装器
+pyaudio>=0.2.13  # 可能需要额外安装PortAudio
 
 # 数据处理
 numpy>=1.24.0
@@ -44,32 +34,32 @@ scipy>=1.11.0
 
 # 异步编程
 aiofiles>=23.0.0
-asyncio>=3.4.3
 
 # 数据库
 sqlalchemy>=2.0.0
-alembic>=1.12.0
 
 # 配置管理
 pydantic>=2.0.0
 pyyaml>=6.0.0
 python-dotenv>=1.0.0
 
-# 日志和监控
+# 日志
 loguru>=0.7.0
-psutil>=5.9.0
-GPUtil>=1.4.0  # GPU监控
 
 # 测试
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
-pytest-cov>=4.1.0
 
 # 代码质量
 black>=23.0.0
 flake8>=6.0.0
-mypy>=1.5.0
 
-# 其他工具
+# 可视化和调试
+matplotlib>=3.7.0
 tqdm>=4.65.0
-requests>=2.31.0
+
+# 注意事项：
+# 1. tensorrt 仅在 Jetson 设备上可用
+# 2. tflite-runtime 仅在 Linux ARM 上可用
+# 3. 硬件相关库（gpiozero, RPi.GPIO）仅在 Raspberry Pi 上需要
+# 4. 如需完整功能，请在实际硬件上使用 requirements.txt
