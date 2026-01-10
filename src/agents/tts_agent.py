@@ -3,50 +3,40 @@ TTS智能体 - 负责语音合成和音频输出
 
 功能：
 1. 文本转语音（TTS）
-2. 语音情感调整
+2. 语音情感/紧急程度调整
 3. 多语言支持
 4. 音频播放控制
 """
 
 import asyncio
 import time
-from typing import Dict, Any
+import platform
+from typing import Dict, Any, Optional
 from pathlib import Path
 import yaml
 
 import numpy as np
 
-# 可选导入 sounddevice（PC端可能未安装）
-try:
-    import sounddevice as sd
-    _has_sounddevice = True
-except ImportError:
-    sd = None
-    _has_sounddevice = False
-
 
 class TTSAgent:
     """
-    TTS智能体 - 使用Coqui TTS进行语音合成
+    TTS智能体 - 使用系统TTS进行语音合成
 
-    提供高质量的语音反馈，支持多语言和情感调整。
+    提供语音反馈功能，支持紧急程度调整和语音播放。
     """
 
-    def __init__(self, config_path: str = "config/model_config.yaml", config: Dict[str, Any] = None):
+    def __init__(self, config_path: str = "config/model_config.yaml"):
         """
         初始化TTS智能体
 
         Args:
             config_path: 配置文件路径
-            config: 配置字典（优先使用）
         """
-        if config is not None:
-            self.config = config
-        else:
-            self.config = self._load_config(config_path)
+        self.config = self._load_config(config_path)
 
-        # TTS模型（延迟加载）
-        self.tts_model = None
+        # TTS引擎（延迟加载）
+        self.tts_engine = None
+        self.tts_type = None  # "pyttsx3" 或 "coqui"
 
         # 音频参数
         self.sample_rate = 22050
@@ -61,35 +51,63 @@ class TTSAgent:
             with open(config_path, 'r', encoding='utf-8') as f:
                 return yaml.safe_load(f)
         except FileNotFoundError:
-            print(f"[TTSAgent] 配置文件不存在: {config_path}")
-            print("[TTSAgent] 使用默认配置")
+            # 如果配置文件不存在，返回默认配置
             return {
                 "tts": {
-                    "model_path": "",
+                    "engine": "pyttsx3",
                     "templates": {}
                 }
             }
 
-    def _load_model(self):
+    def _load_engine(self):
         """
-        延迟加载TTS模型
+        延迟加载TTS引擎
 
-        首次使用时才加载模型，减少启动时间。
+        首次使用时才加载引擎，减少启动时间。
+        优先使用系统TTS（pyttsx3），如果不可用则尝试Coqui TTS。
         """
-        if self.tts_model is None:
-            print("[TTSAgent] 加载TTS模型...")
-            try:
-                from TTS.api import TTS
+        if self.tts_engine is not None:
+            return
 
-                model_path = self.config.get("tts", {}).get("model_path")
-                self.tts_model = TTS(model_path=model_path)
+        print("[TTSAgent] 加载TTS引擎...")
 
-                print("[TTSAgent] TTS模型加载完成")
+        # 优先使用系统TTS
+        try:
+            import pyttsx3
 
-            except Exception as e:
-                print(f"[TTSAgent] TTS模型加载失败: {e}")
-                print("[TTSAgent] 将使用备用语音方案")
-                self.tts_model = "fallback"  # 标记为使用备用方案
+            self.tts_engine = pyttsx3.init()
+            self.tts_type = "pyttsx3"
+
+            # 设置中文语音（如果可用）
+            voices = self.tts_engine.getProperty('voices')
+            for voice in voices:
+                if 'chinese' in voice.name.lower() or 'zh' in voice.id.lower():
+                    self.tts_engine.setProperty('voice', voice.id)
+                    print(f"[TTSAgent] 使用中文语音: {voice.name}")
+                    break
+
+            print("[TTSAgent] 系统TTS加载完成")
+            return
+
+        except ImportError:
+            print("[TTSAgent] pyttsx3未安装，尝试Coqui TTS...")
+        except Exception as e:
+            print(f"[TTSAgent] 系统TTS加载失败: {e}")
+
+        # 尝试使用Coqui TTS
+        try:
+            from TTS.api import TTS
+
+            model_path = self.config.get("tts", {}).get("model_path")
+            self.tts_engine = TTS(model_path=model_name=model_path)
+            self.tts_type = "coqui"
+
+            print("[TTSAgent] Coqui TTS加载完成")
+            return
+
+        except Exception as e:
+            print(f"[TTSAgent] Coqui TTS加载失败: {e}")
+            print("[TTSAgent] 所有TTS引擎均不可用")
 
     async def speak(self, feedback: Dict[str, Any]) -> None:
         """
@@ -103,8 +121,12 @@ class TTSAgent:
                     "delay": float  # 延迟（秒）
                 }
         """
-        # 确保模型已加载
-        self._load_model()
+        # 确保引擎已加载
+        self._load_engine()
+
+        if self.tts_engine is None:
+            print("[TTSAgent] TTS引擎不可用，跳过语音播放")
+            return
 
         # 提取参数
         message = feedback.get("message", "")
@@ -118,124 +140,104 @@ class TTSAgent:
         if delay > 0:
             await asyncio.sleep(delay)
 
-        # 根据紧急程度调整语音参数
-        speed = self._get_speed_by_urgency(urgency)
-
         print(f"[TTSAgent] 播放语音: {message} (紧急度: {urgency})")
 
-        # 生成语音
-        audio = await self._synthesize(message, speed=speed)
+        # 根据TTS类型播放
+        if self.tts_type == "pyttsx3":
+            await self._speak_pyttsx3(message, urgency)
+        elif self.tts_type == "coqui":
+            await self._speak_coqui(message, urgency)
 
-        # 播放语音
-        if audio is not None:
-            await self._play_audio(audio)
-
-    async def _synthesize(self, text: str, speed: float = 1.0) -> np.ndarray:
+    async def _speak_pyttsx3(self, text: str, urgency: str) -> None:
         """
-        文本转语音
+        使用pyttsx3播放语音
 
         Args:
-            text: 输入文本
-            speed: 语速倍率
-
-        Returns:
-            音频数据（numpy数组）
+            text: 要播放的文本
+            urgency: 紧急程度
         """
         try:
-            # 使用Coqui TTS
-            if self.tts_model and self.tts_model != "fallback":
-                # 生成语音
-                wav = self.tts_model.tts(
-                    text=text,
-                    speed=speed
-                )
+            # 根据紧急程度调整语速
+            rate = self._get_rate_by_urgency(urgency)
 
-                return np.array(wav)
+            # 设置语速
+            current_rate = self.tts_engine.getProperty('rate')
+            self.tts_engine.setProperty('rate', int(current_rate * rate))
 
-            else:
-                # 备用方案：使用系统TTS（仅适用于演示）
-                return await self._fallback_tts(text)
+            # 播放语音
+            self.tts_engine.say(text)
+            self.tts_engine.runAndWait()
+
+            print("[TTSAgent] 语音播放完成")
 
         except Exception as e:
-            print(f"[TTSAgent] 语音合成错误: {e}")
-            return None
+            print(f"[TTSAgent] pyttsx3播放失败: {e}")
 
-    async def _fallback_tts(self, text: str) -> np.ndarray:
+    async def _speak_coqui(self, text: str, urgency: str) -> None:
         """
-        备用TTS方案
-
-        当Coqui TTS不可用时，使用系统TTS或生成简单的蜂鸣声。
+        使用Coqui TTS播放语音
 
         Args:
-            text: 输入文本
-
-        Returns:
-            音频数据
+            text: 要播放的文本
+            urgency: 紧急程度
         """
-        print(f"[TTSAgent] 使用备用TTS: {text}")
-
-        # 生成简单的提示音
-        duration = 0.5  # 秒
-        sample_rate = 22050
-        frequency = 440  # Hz（A4音符）
-
-        t = np.linspace(0, duration, int(sample_rate * duration))
-        audio = 0.3 * np.sin(2 * np.pi * frequency * t)
-
-        return audio
-
-    async def _play_audio(self, audio: np.ndarray) -> None:
-        """
-        播放音频
-
-        Args:
-            audio: 音频数据（numpy数组）
-        """
-        if audio is None:
-            print("[TTSAgent] 音频数据为空，跳过播放")
-            return
-
         try:
-            if _has_sounddevice and sd is not None:
-                # 使用sounddevice播放
-                sd.play(
-                    audio.astype(np.float32),
-                    samplerate=self.sample_rate,
-                    channels=self.channels
-                )
+            # 生成语音
+            speed = self._get_speed_by_urgency(urgency)
 
-                # 等待播放完成
-                sd.wait()
-            else:
-                raise ImportError("sounddevice 不可用")
+            # 使用tts_to_file方法避免API兼容性问题
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
+                temp_file = f.name
 
-        except Exception as e:
-            print(f"[TTSAgent] 音频播放错误: {e}")
+            self.tts_engine.tts_to_file(
+                text=text,
+                file_path=temp_file,
+                speed=speed
+            )
 
-            # 尝试使用备用播放方式
+            # 播放生成的音频文件
+            await self._play_audio_file(temp_file)
+
+            # 清理临时文件
             try:
-                import pyaudio
-                p = pyaudio.PyAudio()
+                Path(temp_file).unlink(missing_ok=True)
+            except:
+                pass
 
-                stream = p.open(
-                    format=pyaudio.paFloat32,
-                    channels=self.channels,
-                    rate=self.sample_rate,
-                    output=True
-                )
+            print("[TTSAgent] 语音播放完成")
 
-                stream.write(audio.tobytes())
-                stream.stop_stream()
-                stream.close()
-                p.terminate()
+        except Exception as e:
+            print(f"[TTSAgent] Coqui TTS播放失败: {e}")
+            # 降级到文件播放
+            print("[TTSAgent] 尝试降级方案...")
 
-            except Exception as e2:
-                print(f"[TTSAgent] 备用播放方式也失败: {e2}")
-                print("[TTSAgent] 仅显示提示消息，不播放音频")
+    async def _play_audio_file(self, file_path: str) -> None:
+        """
+        播放音频文件
+
+        Args:
+            file_path: 音频文件路径
+        """
+        system = platform.system()
+
+        try:
+            if system == "Windows":
+                import winsound
+                winsound.PlaySound(file_path, winsound.SND_FILENAME)
+            elif system == "Darwin":  # macOS
+                import subprocess
+                subprocess.run(["afplay", file_path], check=True)
+            else:  # Linux
+                import subprocess
+                subprocess.run(["aplay", file_path], check=True)
+
+        except Exception as e:
+            print(f"[TTSAgent] 音频播放失败: {e}")
 
     def _get_speed_by_urgency(self, urgency: str) -> float:
         """
-        根据紧急程度获取语速
+        根据紧急程度获取语速倍率
 
         Args:
             urgency: 紧急程度
@@ -250,6 +252,24 @@ class TTSAgent:
         }
 
         return speed_map.get(urgency, 1.0)
+
+    def _get_rate_by_urgency(self, urgency: str) -> float:
+        """
+        根据紧急程度获取pyttsx3语速倍率
+
+        Args:
+            urgency: 紧急程度
+
+        Returns:
+            语速倍率
+        """
+        rate_map = {
+            "high": 1.3,    # 快速
+            "medium": 1.0,  # 正常
+            "low": 0.8      # 缓慢
+        }
+
+        return rate_map.get(urgency, 1.0)
 
     def speak_template(self, template_name: str, **kwargs) -> None:
         """
@@ -273,22 +293,10 @@ class TTSAgent:
     def stop(self):
         """停止当前播放"""
         try:
-            if _has_sounddevice and sd is not None:
-                sd.stop()
-            else:
-                print("[TTSAgent] sounddevice 不可用，无法停止播放")
+            if self.tts_type == "pyttsx3" and self.tts_engine:
+                self.tts_engine.stop()
         except Exception as e:
             print(f"[TTSAgent] 停止播放错误: {e}")
-
-    def set_volume(self, volume: float):
-        """
-        设置音量
-
-        Args:
-            volume: 音量（0.0-1.0）
-        """
-        # TODO: 实现音量控制
-        pass
 
     def test_audio(self):
         """测试音频输出"""
