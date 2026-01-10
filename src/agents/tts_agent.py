@@ -99,7 +99,7 @@ class TTSAgent:
             from TTS.api import TTS
 
             model_path = self.config.get("tts", {}).get("model_path")
-            self.tts_engine = TTS(model_path=model_name=model_path)
+            self.tts_engine = TTS(model_name=model_path)
             self.tts_type = "coqui"
 
             print("[TTSAgent] Coqui TTS加载完成")
