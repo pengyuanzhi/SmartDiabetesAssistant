@@ -58,6 +58,7 @@ def test_camera_headless(camera_id: int, duration: int = 10):
         camera_id: 摄像头ID
         duration: 测试时长（秒）
     """
+    global start
     print(f"\n=== 测试摄像头 {camera_id} ===")
     print(f"测试时长: {duration} 秒")
     print("使用无GUI模式（适合Windows服务器）\n")
