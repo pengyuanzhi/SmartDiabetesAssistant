@@ -380,9 +380,9 @@ def check_pytorch_version():
     try:
         import torch
         version = tuple(map(int, torch.__version__.split('.')[:2]))
-        return version
-    except:
-        return None
+        return version, torch.__version__
+    except Exception:
+        return None, None
 
 
 def test_coqui_tts():
@@ -390,9 +390,9 @@ def test_coqui_tts():
     print("\n=== 测试Coqui TTS ===\n")
 
     # 检查PyTorch版本
-    pytorch_version = check_pytorch_version()
+    pytorch_version, version_str = check_pytorch_version()
     if pytorch_version and pytorch_version >= (2, 6):
-        print(f"[警告] 检测到PyTorch {torch.__version__}")
+        print(f"[警告] 检测到PyTorch {version_str}")
         print("PyTorch 2.6+引入了新的安全加载机制，与Coqui TTS不兼容")
         print("\n解决方案:")
         print("  方案1: 降级PyTorch到2.5.x（推荐）")
@@ -528,6 +528,20 @@ def test_voice_cloning_single(reference_audio: str, test_texts: List[str]) -> bo
     print(f"参考音频: {reference_audio}")
     print(f"测试文本数: {len(test_texts)}\n")
 
+    # 检查PyTorch版本
+    pytorch_version, version_str = check_pytorch_version()
+    if pytorch_version and pytorch_version >= (2, 6):
+        print(f"[警告] 检测到PyTorch {version_str}")
+        print("PyTorch 2.6+引入了新的安全加载机制，与Coqui TTS不兼容")
+        print("\n解决方案:")
+        print("  方案1: 降级PyTorch到2.5.x")
+        print("    pip install torch==2.5.1 torchvision==0.20.1")
+        print()
+        print("  方案2: 使用系统TTS（推荐）")
+        print("    系统TTS已集成在项目中，无需Coqui TTS")
+        print()
+        return False
+
     if not Path(reference_audio).exists():
         print(f"[错误] 参考音频文件不存在: {reference_audio}")
         return False
@@ -595,6 +609,20 @@ def test_voice_cloning_multiple(reference_audios: List[str], test_text: str) -> 
     """
     print(f"\n=== 多语音合成对比 ===")
     print(f"测试文本: {test_text}\n")
+
+    # 检查PyTorch版本
+    pytorch_version, version_str = check_pytorch_version()
+    if pytorch_version and pytorch_version >= (2, 6):
+        print(f"[警告] 检测到PyTorch {version_str}")
+        print("PyTorch 2.6+引入了新的安全加载机制，与Coqui TTS不兼容")
+        print("\n解决方案:")
+        print("  方案1: 降级PyTorch到2.5.x")
+        print("    pip install torch==2.5.1 torchvision==0.20.1")
+        print()
+        print("  方案2: 使用系统TTS（推荐）")
+        print("    系统TTS已集成在项目中，无需Coqui TTS")
+        print()
+        return False
 
     try:
         from TTS.api import TTS
