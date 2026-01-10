@@ -375,9 +375,33 @@ def record_reference_audio(output_path: str = "reference_voice.wav", duration: i
         return False
 
 
+def check_pytorch_version():
+    """检查PyTorch版本兼容性"""
+    try:
+        import torch
+        version = tuple(map(int, torch.__version__.split('.')[:2]))
+        return version
+    except:
+        return None
+
+
 def test_coqui_tts():
     """测试Coqui TTS（需要网络下载模型）"""
     print("\n=== 测试Coqui TTS ===\n")
+
+    # 检查PyTorch版本
+    pytorch_version = check_pytorch_version()
+    if pytorch_version and pytorch_version >= (2, 6):
+        print(f"[警告] 检测到PyTorch {torch.__version__}")
+        print("PyTorch 2.6+引入了新的安全加载机制，与Coqui TTS不兼容")
+        print("\n解决方案:")
+        print("  方案1: 降级PyTorch到2.5.x（推荐）")
+        print("    pip install torch==2.5.1 torchvision==0.20.1")
+        print()
+        print("  方案2: 使用系统TTS（推荐，无需配置）")
+        print("    系统TTS已集成在项目中，无需Coqui TTS")
+        print()
+        return False
 
     try:
         from TTS.api import TTS
@@ -460,12 +484,32 @@ def test_coqui_tts():
         print("推荐使用系统TTS (pyttsx3) 进行开发")
         return False
     except Exception as e:
-        print(f"[错误] Coqui TTS测试失败: {e}")
-        print("\n可能的原因:")
-        print("  1. 网络连接问题（无法下载模型）")
-        print("  2. 磁盘空间不足")
-        print("  3. 模型下载中断")
-        print("  4. 模型API变化（建议使用系统TTS）")
+        error_str = str(e)
+        print(f"[错误] Coqui TTS测试失败")
+
+        # 检查是否是PyTorch版本问题
+        if "Weights only load failed" in error_str or "WeightsUnpickler error" in error_str:
+            print("\n[原因] PyTorch版本兼容性问题")
+            print()
+            print("详细信息:")
+            print("  PyTorch 2.6+ 改变了默认的安全加载机制")
+            print("  Coqui TTS模型文件包含不兼容的序列化对象")
+            print()
+            print("解决方案:")
+            print("  方案1: 降级PyTorch（推荐）")
+            print("    pip install torch==2.5.1 torchvision==0.20.1")
+            print()
+            print("  方案2: 使用系统TTS（强烈推荐）")
+            print("    系统TTS已集成，无需Coqui TTS")
+            print("    系统TTS更稳定，启动更快")
+            print()
+        else:
+            print("\n可能的原因:")
+            print("  1. 网络连接问题（无法下载模型）")
+            print("  2. 磁盘空间不足")
+            print("  3. 模型下载中断")
+            print("  4. 模型API变化")
+
         return False
 
 
