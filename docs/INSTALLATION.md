@@ -31,7 +31,22 @@ pip install -r requirements-pc.txt
 
 #### 2. 解决常见问题
 
-**问题 1: pyaudio 安装失败**
+**问题 1: TTS (Coqui TTS) 安装失败**
+
+```bash
+# 解决方案: 使用系统TTS代替
+# 项目默认使用 pyttsx3（系统TTS），无需安装 Coqui TTS
+
+# 如果确实需要 Coqui TTS:
+# 1. Windows 需要先安装 Visual Studio C++ Build Tools
+# 2. 然后运行: pip install TTS
+# 3. 首次使用会下载模型（约50MB），确保网络畅通
+
+# 推荐方案: 直接使用 pyttsx3
+pip install pyttsx3
+```
+
+**问题 2: pyaudio 安装失败**
 
 ```bash
 # 方案 A: 使用预编译的 wheel 文件
@@ -44,14 +59,14 @@ pipwin install pyaudio
 pip install path\to\pyaudio‑xxx.whl
 ```
 
-**问题 2: OpenCV 安装失败**
+**问题 3: OpenCV 安装失败**
 
 ```bash
 # 使用预编译的 wheel 文件
 pip install opencv-python‑python
 ```
 
-**问题 3: mmpose/mmdet 安装失败**
+**问题 4: mmpose/mmdet 安装失败**
 
 ```bash
 # 先安装 openmim
@@ -65,7 +80,7 @@ mim install mmdet
 pip install ultralytics
 ```
 
-**问题 4: Python 3.14 兼容性问题**
+**问题 5: Python 3.14 兼容性问题**
 
 ```bash
 # 建议降级到 Python 3.10 或 3.11
