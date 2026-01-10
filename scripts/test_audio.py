@@ -201,7 +201,7 @@ def record_reference_audio(output_path: str = "reference_voice.wav", duration: i
             rate=RATE,
             input_device_index=device_index,
             input=True,
-            frames_per_chunk=CHUNK
+            frames_per_buffer=CHUNK
         )
 
         print(f"\n[录制中] 请说话（{duration}秒）...")
