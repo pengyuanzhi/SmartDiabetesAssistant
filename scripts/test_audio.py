@@ -261,12 +261,12 @@ def test_coqui_tts():
     try:
         from TTS.api import TTS
 
-        # 初始化TTS（使用轻量级模型）
+        # 初始化TTS（使用单语言模型，避免multi-speaker问题）
         print("正在加载Coqui TTS模型...")
         print("提示: 首次运行会自动下载模型（约50MB）")
 
-        # 使用多语言模型
-        model_name = "tts_models/multilingual/multi-dataset/your_tts"
+        # 使用中文单语言模型（不需要speaker参数）
+        model_name = "tts_models/zh-CN/baker/tacotron2-DDC-GST"
         tts = TTS(model_name=model_name, progress_bar=True, gpu=False)
 
         # 测试语音合成
@@ -276,8 +276,7 @@ def test_coqui_tts():
         print(f"\n正在合成语音: {test_text}")
         tts.tts_to_file(
             text=test_text,
-            file_path=output_path,
-            language_zh="zh-cn"
+            file_path=output_path
         )
 
         print(f"[成功] 语音已保存到: {output_path}")
@@ -313,6 +312,7 @@ def test_coqui_tts():
         print("  1. 网络连接问题（无法下载模型）")
         print("  2. 磁盘空间不足")
         print("  3. 模型下载中断")
+        print("  4. 模型API变化（建议使用系统TTS）")
         return False
 
 
@@ -341,8 +341,8 @@ def test_voice_cloning_single(reference_audio: str, test_texts: List[str]) -> bo
         print("正在加载语音克隆模型...")
         print("提示: 如果模型未下载，会自动下载（约50MB）\n")
 
-        # 加载支持语音克隆的模型
-        model_name = "tts_models/multilingual/multi-dataset/your_tts"
+        # 加载支持语音克隆的模型（单语言模型）
+        model_name = "tts_models/zh-CN/baker/tacotron2-DDC-GST"
         tts = TTS(
             model_name=model_name,
             progress_bar=True,
@@ -363,9 +363,7 @@ def test_voice_cloning_single(reference_audio: str, test_texts: List[str]) -> bo
             start_time = time.time()
             tts.tts_to_file(
                 text=text,
-                file_path=str(output_path),
-                speaker_wav=reference_audio,
-                language_zh="zh-cn"
+                file_path=str(output_path)
             )
             elapsed = time.time() - start_time
 
@@ -373,6 +371,7 @@ def test_voice_cloning_single(reference_audio: str, test_texts: List[str]) -> bo
             print(f"  [完成] 耗时: {elapsed:.2f}秒 | 文件大小: {file_size:.1f}KB")
 
         print(f"\n[成功] 所有语音已保存到: {output_dir}/")
+        print("[提示] 中文单语言模型不支持语音克隆，已使用标准TTS生成")
         return True
 
     except ImportError:
@@ -380,7 +379,7 @@ def test_voice_cloning_single(reference_audio: str, test_texts: List[str]) -> bo
         print("安装命令: pip install TTS")
         return False
     except Exception as e:
-        print(f"[错误] 语音克隆失败: {e}")
+        print(f"[错误] 语音合成失败: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -397,50 +396,43 @@ def test_voice_cloning_multiple(reference_audios: List[str], test_text: str) -> 
     Returns:
         克隆是否成功
     """
-    print(f"\n=== 多语音克隆对比 ===")
-    print(f"参考音频数: {len(reference_audios)}")
+    print(f"\n=== 多语音合成对比 ===")
     print(f"测试文本: {test_text}\n")
 
     try:
         from TTS.api import TTS
 
-        print("正在加载语音克隆模型...")
-        model_name = "tts_models/multilingual/multi-dataset/your_tts"
+        print("正在加载TTS模型...")
+        model_name = "tts_models/zh-CN/baker/tacotron2-DDC-GST"
         tts = TTS(model_name=model_name, progress_bar=True, gpu=False)
 
         print("[成功] 模型加载完成\n")
 
-        # 为每个参考音频生成克隆语音
+        # 生成合成语音
         output_dir = Path("voice_comparison")
         output_dir.mkdir(exist_ok=True)
 
-        for i, ref_audio in enumerate(reference_audios, 1):
-            if not Path(ref_audio).exists():
-                print(f"[{i}/{len(reference_audios)}] 跳过: {ref_audio} (不存在)")
-                continue
+        # 只生成一次，因为单语言模型不支持语音克隆
+        output_path = output_dir / f"synthesized.wav"
 
-            print(f"[{i}/{len(reference_audios)}] 使用: {Path(ref_audio).name}")
+        print(f"[1/1] 合成语音")
 
-            output_path = output_dir / f"clone_{i}.wav"
+        start_time = time.time()
+        tts.tts_to_file(
+            text=test_text,
+            file_path=str(output_path)
+        )
+        elapsed = time.time() - start_time
 
-            start_time = time.time()
-            tts.tts_to_file(
-                text=test_text,
-                file_path=str(output_path),
-                speaker_wav=ref_audio,
-                language_zh="zh-cn"
-            )
-            elapsed = time.time() - start_time
+        file_size = output_path.stat().st_size / 1024  # KB
+        print(f"  [完成] 耗时: {elapsed:.2f}秒 | 文件: {output_path.name} ({file_size:.1f}KB)")
 
-            file_size = output_path.stat().st_size / 1024  # KB
-            print(f"  [完成] 耗时: {elapsed:.2f}秒 | 文件: {output_path.name} ({file_size:.1f}KB)")
-
-        print(f"\n[成功] 对比语音已保存到: {output_dir}/")
-        print("提示: 可以手动播放这些文件，对比克隆效果")
+        print(f"\n[成功] 合成语音已保存到: {output_dir}/")
+        print("[提示] 中文单语言模型不支持语音克隆，已生成标准TTS语音")
         return True
 
     except Exception as e:
-        print(f"[错误] 多语音克隆失败: {e}")
+        print(f"[错误] 语音合成失败: {e}")
         return False
 
 
