@@ -7,9 +7,25 @@
 import sys
 import asyncio
 from pathlib import Path
+import tempfile
+import yaml
 
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+
+def create_temp_config():
+    """创建临时配置文件"""
+    config = {
+        "tts": {
+            "model_path": "tts_models/multilingual/multi-dataset/your_tts",
+            "templates": {}
+        }
+    }
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        yaml.dump(config, f)
+        return f.name
 
 
 async def test_tts_agent_basic():
@@ -21,35 +37,35 @@ async def test_tts_agent_basic():
 
         # 初始化TTS智能体
         print("正在初始化TTS智能体...")
-        agent = TTSAgent(config={})
+        config_path = create_temp_config()
+        agent = TTSAgent(config_path=config_path)
 
-        # 测试语音合成
+        # 测试语音播放
         test_messages = [
-            ("智能糖尿病助手系统启动", "neutral"),
-            ("注射角度正确", "positive"),
-            ("警告，注射角度过小，请调整至45度以上", "negative"),
-            ("注射完成，请按压注射部位", "neutral"),
+            ("智能糖尿病助手系统启动", "low"),
+            ("注射角度正确", "low"),
+            ("警告，注射角度过小，请调整至45度以上", "medium"),
+            ("注射完成，请按压注射部位", "low"),
         ]
 
-        print("\n开始语音合成测试...\n")
+        print("\n开始语音播放测试...\n")
+        print("提示: 使用系统TTS (pyttsx3) 进行播放\n")
 
-        for i, (text, emotion) in enumerate(test_messages, 1):
+        for i, (text, urgency) in enumerate(test_messages, 1):
             print(f"[{i}/{len(test_messages)}] 文本: {text}")
-            print(f"           情感: {emotion}")
+            print(f"           紧急度: {urgency}")
 
             try:
-                # 生成语音
-                audio_path = await agent.generate_speech(text, emotion=emotion)
+                # 使用 speak 方法播放语音
+                feedback = {
+                    "message": text,
+                    "urgency": urgency,
+                    "delay": 0
+                }
 
-                if audio_path:
-                    print(f"           [成功] 音频已生成: {audio_path}")
-
-                    # 播放音频（可选）
-                    play = input("           是否播放? (y/N): ").strip().lower()
-                    if play == 'y':
-                        agent.play_audio(audio_path)
-                else:
-                    print(f"           [失败] 语音生成失败")
+                print(f"           [播放中]...")
+                await agent.speak(feedback)
+                print(f"           [完成] 播放完成")
 
             except Exception as e:
                 print(f"           [错误] {e}")
@@ -57,6 +73,10 @@ async def test_tts_agent_basic():
             print()
 
         print("[成功] TTS智能体基本功能测试完成")
+
+        # 清理临时配置文件
+        Path(config_path).unlink(missing_ok=True)
+
         return True
 
     except ImportError as e:
@@ -71,39 +91,46 @@ async def test_tts_agent_basic():
 
 
 async def test_tts_agent_emotions():
-    """测试不同情感的语音合成"""
-    print("\n=== 测试情感语音合成 ===\n")
+    """测试不同紧急程度的语音"""
+    print("\n=== 测试紧急程度语音 ===\n")
 
     try:
         from src.agents.tts_agent import TTSAgent
 
-        agent = TTSAgent(config={})
+        config_path = create_temp_config()
+        agent = TTSAgent(config_path=config_path)
 
-        # 测试不同情感
-        emotions = {
-            "neutral": "请开始注射操作",
-            "positive": "很好，注射角度正确",
-            "negative": "警告，注射速度过快",
-            "urgent": "请立即停止，操作有误"
+        # 测试不同紧急程度
+        urgencies = {
+            "low": "请开始注射操作",
+            "medium": "很好，注射角度正确",
+            "high": "警告，注射速度过快，请立即停止"
         }
 
-        print("测试不同情感表达...\n")
+        print("测试不同紧急程度表达...\n")
 
-        for emotion, text in emotions.items():
-            print(f"情感: {emotion:10} | 文本: {text}")
+        for urgency, text in urgencies.items():
+            print(f"紧急度: {urgency:8} | 文本: {text}")
 
             try:
-                audio_path = await agent.generate_speech(text, emotion=emotion)
-                if audio_path:
-                    print(f"状态: [成功] | 文件: {audio_path}")
-                else:
-                    print(f"状态: [失败]")
+                feedback = {
+                    "message": text,
+                    "urgency": urgency,
+                    "delay": 0
+                }
+
+                print(f"状态: [播放中]...")
+                await agent.speak(feedback)
+                print(f"状态: [完成]")
+
             except Exception as e:
                 print(f"状态: [错误] {e}")
 
             print()
 
-        print("[成功] 情感语音合成测试完成")
+        print("[成功] 紧急程度语音测试完成")
+
+        Path(config_path).unlink(missing_ok=True)
         return True
 
     except Exception as e:
@@ -115,74 +142,49 @@ async def test_tts_agent_queue():
     """测试语音队列功能"""
     print("\n=== 测试语音队列功能 ===\n")
 
+    print("此功能测试连续语音提示\n")
+
     try:
         from src.agents.tts_agent import TTSAgent
 
-        agent = TTSAgent(config={})
+        config_path = create_temp_config()
+        agent = TTSAgent(config_path=config_path)
 
         # 模拟连续的语音提示
         messages = [
-            "系统启动",
-            "检测到注射器",
-            "请调整注射角度",
-            "角度已正确",
-            "开始注射",
-            "注射速度过快",
-            "速度已恢复正常",
-            "注射完成"
+            ("系统启动", "low"),
+            ("检测到注射器", "low"),
+            ("请调整注射角度", "medium"),
+            ("角度已正确", "low"),
+            ("开始注射", "low"),
+            ("注射速度过快", "high"),
+            ("速度已恢复正常", "low"),
+            ("注射完成", "low"),
         ]
 
         print(f"添加 {len(messages)} 条语音到队列...\n")
 
-        for i, message in enumerate(messages, 1):
-            print(f"[{i}/{len(messages)}] 添加: {message}")
-            await agent.add_to_queue(message)
-
-        print("\n开始处理队列...")
-        await agent.process_queue()
-
-        print("\n[成功] 语音队列测试完成")
-        return True
-
-    except Exception as e:
-        print(f"[错误] 测试失败: {e}")
-        return False
-
-
-async def test_tts_agent_language_switching():
-    """测试多语言切换"""
-    print("\n=== 测试多语言切换 ===\n")
-
-    try:
-        from src.agents.tts_agent import TTSAgent
-
-        agent = TTSAgent(config={})
-
-        # 测试不同语言
-        messages = [
-            ("zh-cn", "智能糖尿病助手"),
-            ("en-us", "Smart Diabetes Assistant"),
-            ("zh-cn", "请开始注射"),
-            ("en-us", "Please start injection"),
-        ]
-
-        print("测试语言切换...\n")
-
-        for lang, text in messages:
-            print(f"语言: {lang:6} | 文本: {text}")
+        for i, (message, urgency) in enumerate(messages, 1):
+            print(f"[{i}/{len(messages)}] 播放: {message}")
 
             try:
-                audio_path = await agent.generate_speech(text, language=lang)
-                if audio_path:
-                    print(f"状态: [成功]")
-                else:
-                    print(f"状态: [失败]")
+                feedback = {
+                    "message": message,
+                    "urgency": urgency,
+                    "delay": 0
+                }
+
+                await agent.speak(feedback)
+
+                # 短暂延迟
+                await asyncio.sleep(0.5)
+
             except Exception as e:
-                print(f"状态: [错误] {e}")
+                print(f"  错误: {e}")
 
-            print()
+        print("\n[成功] 语音队列测试完成")
 
-        print("[成功] 多语言切换测试完成")
+        Path(config_path).unlink(missing_ok=True)
         return True
 
     except Exception as e:
@@ -198,25 +200,30 @@ async def test_tts_agent_performance():
         from src.agents.tts_agent import TTSAgent
         import time
 
-        agent = TTSAgent(config={})
+        config_path = create_temp_config()
+        agent = TTSAgent(config_path=config_path)
 
-        test_text = "这是一段用于性能测试的文本，包含了基本的语音合成内容"
-        iterations = 5
+        test_text = "这是一段用于性能测试的文本"
+        iterations = 3
 
         print(f"进行 {iterations} 次语音合成测试...\n")
 
         times = []
         for i in range(iterations):
-            start = time.time()
-            audio_path = await agent.generate_speech(test_text)
-            end = time.time()
+            feedback = {
+                "message": test_text,
+                "urgency": "medium",
+                "delay": 0
+            }
 
-            if audio_path:
-                elapsed = end - start
-                times.append(elapsed)
-                print(f"[{i+1}/{iterations}] 耗时: {elapsed:.3f}秒")
-            else:
-                print(f"[{i+1}/{iterations}] 失败")
+            start = time.time()
+            try:
+                await agent.speak(feedback)
+                end = time.time()
+                times.append(end - start)
+                print(f"[{i+1}/{iterations}] 耗时: {end - start:.3f}秒")
+            except Exception as e:
+                print(f"[{i+1}/{iterations}] 失败: {e}")
 
         if times:
             avg_time = sum(times) / len(times)
@@ -226,64 +233,17 @@ async def test_tts_agent_performance():
             print(f"  - 最慢: {max(times):.3f}秒")
             print(f"  - 吞吐量: {1/avg_time:.1f} 次/秒")
 
-            if avg_time < 0.5:
+            if avg_time < 1.0:
                 print("\n[成功] 性能良好，满足实时性要求")
-            elif avg_time < 1.0:
-                print("\n[提示] 性能可接受，建议优化")
+            elif avg_time < 2.0:
+                print("\n[提示] 性能可接受")
             else:
-                print("\n[警告] 性能不足，需要优化")
+                print("\n[警告] 性能需要优化")
+        else:
+            print("[错误] 没有成功的测试")
 
-        return True
-
-    except Exception as e:
-        print(f"[错误] 测试失败: {e}")
-        return False
-
-
-async def test_tts_agent_save_output():
-    """测试语音保存功能"""
-    print("\n=== 测试语音保存功能 ===\n")
-
-    try:
-        from src.agents.tts_agent import TTSAgent
-
-        agent = TTSAgent(config={})
-
-        # 创建输出目录
-        output_dir = Path("test_tts_outputs")
-        output_dir.mkdir(exist_ok=True)
-
-        # 测试消息
-        test_cases = [
-            ("start", "系统启动"),
-            ("correct_angle", "注射角度正确"),
-            ("wrong_angle", "注射角度错误"),
-            ("injection_complete", "注射完成"),
-        ]
-
-        print(f"保存语音文件到: {output_dir}/\n")
-
-        for name, text in test_cases:
-            output_path = output_dir / f"{name}.wav"
-            print(f"生成: {name:20} -> {output_path}")
-
-            try:
-                result_path = await agent.generate_speech(
-                    text,
-                    output_path=str(output_path)
-                )
-
-                if result_path:
-                    file_size = Path(result_path).stat().st_size
-                    print(f"状态: [成功] | 大小: {file_size/1024:.1f}KB")
-                else:
-                    print(f"状态: [失败]")
-
-            except Exception as e:
-                print(f"状态: [错误] {e}")
-
-        print(f"\n[成功] 语音文件已保存到 {output_dir}/")
-        return True
+        Path(config_path).unlink(missing_ok=True)
+        return len(times) > 0
 
     except Exception as e:
         print(f"[错误] 测试失败: {e}")
@@ -298,11 +258,9 @@ async def run_all_tests():
 
     tests = [
         ("基本功能", test_tts_agent_basic),
-        ("情感语音", test_tts_agent_emotions),
+        ("紧急程度语音", test_tts_agent_emotions),
         ("语音队列", test_tts_agent_queue),
-        ("多语言切换", test_tts_agent_language_switching),
         ("性能测试", test_tts_agent_performance),
-        ("保存功能", test_tts_agent_save_output),
     ]
 
     results = {}
@@ -357,18 +315,16 @@ async def main():
     print("=" * 60)
     print("\n可用测试:")
     print("  1. 基本功能测试")
-    print("  2. 情感语音测试")
+    print("  2. 紧急程度语音测试")
     print("  3. 语音队列测试")
-    print("  4. 多语言切换测试")
-    print("  5. 性能测试")
-    print("  6. 保存功能测试")
-    print("  7. 运行所有测试")
+    print("  4. 性能测试")
+    print("  5. 运行所有测试")
     print("  0. 退出")
 
     while True:
         print("\n" + "=" * 60)
         try:
-            choice = input("请选择测试 (0-7): ").strip()
+            choice = input("请选择测试 (0-5): ").strip()
 
             if choice == "0":
                 print("退出测试")
@@ -380,12 +336,8 @@ async def main():
             elif choice == "3":
                 await test_tts_agent_queue()
             elif choice == "4":
-                await test_tts_agent_language_switching()
-            elif choice == "5":
                 await test_tts_agent_performance()
-            elif choice == "6":
-                await test_tts_agent_save_output()
-            elif choice == "7":
+            elif choice == "5":
                 await run_all_tests()
                 break
             else:

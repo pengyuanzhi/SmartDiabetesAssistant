@@ -46,7 +46,28 @@ async def test_audio_feedback():
         from src.agents.tts_agent import TTSAgent
 
         print("\n初始化TTS智能体...")
-        tts_agent = TTSAgent(config={})
+        print("提示: 使用系统TTS (pyttsx3) 进行测试")
+
+        # 使用默认配置路径初始化
+        try:
+            tts_agent = TTSAgent()
+        except:
+            # 如果配置文件不存在，创建临时配置
+            import tempfile
+            import yaml
+
+            temp_config = {
+                "tts": {
+                    "model_path": "tts_models/multilingual/multi-dataset/your_tts",
+                    "templates": {}
+                }
+            }
+
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                yaml.dump(temp_config, f)
+                temp_config_path = f.name
+
+            tts_agent = TTSAgent(config_path=temp_config_path)
 
         # 测试不同级别的告警
         test_cases = [
@@ -62,29 +83,26 @@ async def test_audio_feedback():
             print(f"[{level.value.upper()}] {alert_type}: {message}")
 
             try:
-                # 根据级别选择情感
-                emotion = {
-                    AlertLevel.INFO: "neutral",
-                    AlertLevel.WARNING: "negative",
-                    AlertLevel.CRITICAL: "urgent"
+                # 根据级别选择紧急程度
+                urgency = {
+                    AlertLevel.INFO: "low",
+                    AlertLevel.WARNING: "medium",
+                    AlertLevel.CRITICAL: "high"
                 }[level]
 
-                # 生成语音
-                audio_path = await tts_agent.generate_speech(message, emotion=emotion)
+                # 使用 TTSAgent 的 speak 方法
+                feedback = {
+                    "message": message,
+                    "urgency": urgency,
+                    "delay": 0
+                }
 
-                if audio_path:
-                    print(f"  [成功] 语音已生成: {audio_path}")
+                print(f"  [播放中]...")
 
-                    # 询问是否播放
-                    try:
-                        play = input("  是否播放? (y/N): ").strip().lower()
-                        if play == 'y':
-                            tts_agent.play_audio(audio_path)
-                            print("  [完成] 播放完成")
-                    except (EOFError, KeyboardInterrupt):
-                        pass
-                else:
-                    print(f"  [失败] 语音生成失败")
+                # 播放语音
+                await tts_agent.speak(feedback)
+
+                print(f"  [完成] 语音播放完成")
 
             except Exception as e:
                 print(f"  [错误] {e}")
@@ -96,6 +114,7 @@ async def test_audio_feedback():
 
     except ImportError as e:
         print(f"[错误] 无法导入TTS智能体: {e}")
+        print("提示: 请确保已安装 pyttsx3: pip install pyttsx3")
         return False
     except Exception as e:
         print(f"[错误] 测试失败: {e}")
