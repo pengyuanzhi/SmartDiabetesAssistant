@@ -13,9 +13,38 @@ import time
 from typing import Dict, Any, List
 from collections import deque
 
-from ..agents.tts_agent import TTSAgent
-from ..agents.haptic_agent import HapticAgent
-from ..agents.ui_agent import UIAgent
+# 直接导入各个智能体模块，避免通过 __init__.py 导入其他依赖
+import sys
+import importlib.util
+from pathlib import Path
+
+def _load_agent_module(module_name: str):
+    """
+    动态加载智能体模块，避免通过 __init__.py 导入
+
+    Args:
+        module_name: 模块名称（如 'src.agents.tts_agent'）
+
+    Returns:
+        模块对象
+    """
+    project_root = Path(__file__).parent.parent.parent
+    module_path = project_root / f"{module_name.replace('.', '/')}.py"
+
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+# 加载智能体模块
+tts_agent_module = _load_agent_module('src.agents.tts_agent')
+haptic_agent_module = _load_agent_module('src.agents.haptic_agent')
+ui_agent_module = _load_agent_module('src.agents.ui_agent')
+
+TTSAgent = tts_agent_module.TTSAgent
+HapticAgent = haptic_agent_module.HapticAgent
+UIAgent = ui_agent_module.UIAgent
 
 
 class FeedbackPriority:
@@ -33,17 +62,37 @@ class FeedbackCoordinator:
     确保用户能够及时、清晰地收到提示。
     """
 
-    def __init__(self, config_path: str = "config"):
+    def __init__(self, config_path: str = "config", config: Dict[str, Any] = None):
         """
         初始化反馈协调器
 
         Args:
             config_path: 配置文件路径
+            config: 配置字典（优先使用）
         """
+        # 如果提供了配置字典，使用它；否则从文件加载
+        if config is not None:
+            self.config = config
+        else:
+            self.config = {"config_path": config_path}
+
         # 初始化子智能体
-        self.tts_agent = TTSAgent(f"{config_path}/model_config.yaml")
-        self.haptic_agent = HapticAgent(f"{config_path}/hardware_config.yaml")
-        self.ui_agent = UIAgent(f"{config_path}/hardware_config.yaml")
+        try:
+            if config is not None:
+                # 使用模拟模式
+                self.tts_agent = TTSAgent()
+                self.haptic_agent = HapticAgent(config=config)
+                self.ui_agent = UIAgent(config=config)
+            else:
+                self.tts_agent = TTSAgent(f"{config_path}/model_config.yaml")
+                self.haptic_agent = HapticAgent(f"{config_path}/hardware_config.yaml")
+                self.ui_agent = UIAgent(f"{config_path}/hardware_config.yaml")
+        except Exception as e:
+            print(f"[FeedbackCoordinator] 初始化子智能体时出错: {e}")
+            print("[FeedbackCoordinator] 使用默认配置重新初始化...")
+            self.tts_agent = TTSAgent()
+            self.haptic_agent = HapticAgent(config={})
+            self.ui_agent = UIAgent(config={})
 
         # 反馈队列
         self.feedback_queue = deque()
@@ -83,6 +132,101 @@ class FeedbackCoordinator:
 
         # 记录历史
         self._record_feedback(alerts)
+
+    async def generate_feedback(
+        self,
+        level,
+        alert_type,
+        message: str
+    ) -> Dict[str, Any]:
+        """
+        生成单个反馈（兼容测试脚本接口）
+
+        Args:
+            level: 告警级别 (AlertLevel枚举或字符串)
+            alert_type: 告警类型 (AlertType枚举或字符串)
+            message: 反馈消息
+
+        Returns:
+            反馈结果字典
+        """
+        # 将枚举转换为字符串
+        severity = level.value if hasattr(level, 'value') else str(level)
+        alert_type_str = alert_type.value if hasattr(alert_type, 'value') else str(alert_type)
+
+        # 构造告警对象
+        alert = {
+            "type": alert_type_str,
+            "severity": severity,
+            "message": message,
+            "timestamp": time.time(),
+            "data": {}
+        }
+
+        # 检查是否被去重
+        if self._should_suppress(alert):
+            return {
+                "modalities": [],
+                "message": message,
+                "deduplicated": True
+            }
+
+        # 生成反馈计划
+        feedback_plan = await self._generate_feedback_plan([alert])
+
+        # 返回反馈信息
+        result = {
+            "modalities": [],
+            "message": message,
+            "deduplicated": False
+        }
+
+        if feedback_plan:
+            result["modalities"] = feedback_plan[0].get("modalities", [])
+
+        return result
+
+    async def execute_feedback(self, feedback_result: Dict[str, Any]) -> None:
+        """
+        执行反馈（兼容测试脚本接口）
+
+        Args:
+            feedback_result: generate_feedback返回的结果
+        """
+        message = feedback_result.get("message", "")
+        modalities = feedback_result.get("modalities", [])
+
+        if not modalities:
+            return
+
+        # 构造反馈计划
+        feedback_plan = [{
+            "modalities": modalities,
+            "synchronization": "simultaneous" if len(modalities) > 1 else "none",
+        }]
+
+        # 根据模态添加具体反馈内容
+        if "audio" in modalities:
+            feedback_plan[0]["audio"] = {
+                "message": message,
+                "urgency": "medium"
+            }
+
+        if "vibration" in modalities:
+            feedback_plan[0]["vibration"] = {
+                "pattern": "gentle_reminder",
+                "duration": 0.5
+            }
+
+        if "visual" in modalities:
+            feedback_plan[0]["visual"] = {
+                "type": "info",
+                "content": message,
+                "duration": 2.0
+            }
+
+        # 执行反馈计划
+        await self._execute_feedback_plan(feedback_plan)
 
     async def _generate_feedback_plan(
         self,

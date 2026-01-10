@@ -14,8 +14,15 @@ from typing import Dict, Any
 from pathlib import Path
 import yaml
 
-import cv2
 import numpy as np
+
+# 可选导入 cv2（PC端可能未安装）
+try:
+    import cv2
+    _has_cv2 = True
+except ImportError:
+    cv2 = None
+    _has_cv2 = False
 
 
 class UIAgent:
@@ -25,14 +32,18 @@ class UIAgent:
     在OLED显示屏上显示实时视频、检测结果和系统状态。
     """
 
-    def __init__(self, config_path: str = "config/hardware_config.yaml"):
+    def __init__(self, config_path: str = "config/hardware_config.yaml", config: Dict[str, Any] = None):
         """
         初始化UI智能体
 
         Args:
             config_path: 配置文件路径
+            config: 配置字典（优先使用）
         """
-        self.config = self._load_config(config_path)
+        if config is not None:
+            self.config = config
+        else:
+            self.config = self._load_config(config_path)
 
         # 显示参数
         self.display_resolution = tuple(
@@ -45,8 +56,17 @@ class UIAgent:
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件"""
-        with open(config_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f)
+        except FileNotFoundError:
+            print(f"[UIAgent] 配置文件不存在: {config_path}")
+            print("[UIAgent] 使用默认配置")
+            return {
+                "display": {
+                    "resolution": [800, 480]
+                }
+            }
 
     async def display(self, feedback: Dict[str, Any]) -> None:
         """
@@ -94,6 +114,10 @@ class UIAgent:
                     "alerts": list  # 告警列表
                 }
         """
+        if not _has_cv2:
+            print("[UIAgent] cv2 不可用，无法显示视频帧")
+            return
+
         # 调整大小以适应屏幕
         resized = cv2.resize(frame, self.display_resolution)
 
@@ -121,6 +145,10 @@ class UIAgent:
         Returns:
             绘制后的帧
         """
+        if not _has_cv2 or cv2 is None:
+            print("[UIAgent] cv2 不可用，无法绘制标注")
+            return frame
+
         output = frame.copy()
 
         # 绘制角度信息

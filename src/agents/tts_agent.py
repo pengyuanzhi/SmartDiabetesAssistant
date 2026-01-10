@@ -15,7 +15,14 @@ from pathlib import Path
 import yaml
 
 import numpy as np
-import sounddevice as sd
+
+# 可选导入 sounddevice（PC端可能未安装）
+try:
+    import sounddevice as sd
+    _has_sounddevice = True
+except ImportError:
+    sd = None
+    _has_sounddevice = False
 
 
 class TTSAgent:
@@ -25,14 +32,18 @@ class TTSAgent:
     提供高质量的语音反馈，支持多语言和情感调整。
     """
 
-    def __init__(self, config_path: str = "config/model_config.yaml"):
+    def __init__(self, config_path: str = "config/model_config.yaml", config: Dict[str, Any] = None):
         """
         初始化TTS智能体
 
         Args:
             config_path: 配置文件路径
+            config: 配置字典（优先使用）
         """
-        self.config = self._load_config(config_path)
+        if config is not None:
+            self.config = config
+        else:
+            self.config = self._load_config(config_path)
 
         # TTS模型（延迟加载）
         self.tts_model = None
@@ -46,8 +57,18 @@ class TTSAgent:
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件"""
-        with open(config_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f)
+        except FileNotFoundError:
+            print(f"[TTSAgent] 配置文件不存在: {config_path}")
+            print("[TTSAgent] 使用默认配置")
+            return {
+                "tts": {
+                    "model_path": "",
+                    "templates": {}
+                }
+            }
 
     def _load_model(self):
         """
@@ -170,16 +191,23 @@ class TTSAgent:
         Args:
             audio: 音频数据（numpy数组）
         """
-        try:
-            # 使用sounddevice播放
-            sd.play(
-                audio.astype(np.float32),
-                samplerate=self.sample_rate,
-                channels=self.channels
-            )
+        if audio is None:
+            print("[TTSAgent] 音频数据为空，跳过播放")
+            return
 
-            # 等待播放完成
-            sd.wait()
+        try:
+            if _has_sounddevice and sd is not None:
+                # 使用sounddevice播放
+                sd.play(
+                    audio.astype(np.float32),
+                    samplerate=self.sample_rate,
+                    channels=self.channels
+                )
+
+                # 等待播放完成
+                sd.wait()
+            else:
+                raise ImportError("sounddevice 不可用")
 
         except Exception as e:
             print(f"[TTSAgent] 音频播放错误: {e}")
@@ -203,6 +231,7 @@ class TTSAgent:
 
             except Exception as e2:
                 print(f"[TTSAgent] 备用播放方式也失败: {e2}")
+                print("[TTSAgent] 仅显示提示消息，不播放音频")
 
     def _get_speed_by_urgency(self, urgency: str) -> float:
         """
@@ -244,7 +273,10 @@ class TTSAgent:
     def stop(self):
         """停止当前播放"""
         try:
-            sd.stop()
+            if _has_sounddevice and sd is not None:
+                sd.stop()
+            else:
+                print("[TTSAgent] sounddevice 不可用，无法停止播放")
         except Exception as e:
             print(f"[TTSAgent] 停止播放错误: {e}")
 

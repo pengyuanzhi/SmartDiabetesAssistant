@@ -22,14 +22,18 @@ class HapticAgent:
     通过DRV2605L驱动器控制LRA震动马达，提供多种触觉效果。
     """
 
-    def __init__(self, config_path: str = "config/hardware_config.yaml"):
+    def __init__(self, config_path: str = "config/hardware_config.yaml", config: Dict[str, Any] = None):
         """
         初始化触觉智能体
 
         Args:
             config_path: 配置文件路径
+            config: 配置字典（优先使用）
         """
-        self.config = self._load_config(config_path)
+        if config is not None:
+            self.config = config
+        else:
+            self.config = self._load_config(config_path)
 
         # 震动驱动（延迟加载）
         self.driver = None
@@ -39,8 +43,37 @@ class HapticAgent:
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件"""
-        with open(config_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f)
+        except FileNotFoundError:
+            print(f"[HapticAgent] 配置文件不存在: {config_path}")
+            print("[HapticAgent] 使用默认配置")
+            return {
+                "haptic": {
+                    "patterns": {
+                        "gentle_reminder": {
+                            "intensity": 30,
+                            "duration_ms": 200
+                        },
+                        "strong_warning": {
+                            "intensity": 100,
+                            "duration_ms": 1000
+                        },
+                        "double_click": {
+                            "sequence": [
+                                {"intensity": 50, "duration_ms": 50},
+                                {"intensity": 0, "duration_ms": 50},
+                                {"intensity": 50, "duration_ms": 50}
+                            ]
+                        },
+                        "gradual": {
+                            "intensities": [20, 40, 60, 80, 100],
+                            "duration_step_ms": 100
+                        }
+                    }
+                }
+            }
 
     def _initialize_patterns(self) -> Dict[str, Dict[str, Any]]:
         """
