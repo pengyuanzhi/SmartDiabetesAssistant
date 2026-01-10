@@ -63,16 +63,27 @@ optical_flow:
     injection_duration_min_sec: 5  # 推药最短时间
     injection_duration_max_sec: 30
 
-# TTS模型
+# TTS语音合成配置
 tts:
-  model_name: "your_tts"
-  provider: "CoquiTTS"
-  model_path: "models/tts_model.pth"
-  config_path: "models/tts_config.json"
+  # TTS引擎选择（优先级从高到低）
+  # 1. pyttsx3 - 系统TTS（推荐，开箱即用）
+  # 2. coqui - Coqui TTS（需额外安装，提供更自然的语音）
+  engine: "pyttsx3"  # "pyttsx3" 或 "coqui"
+
+  # Coqui TTS配置（仅当engine="coqui"时使用）
+  coqui_model_path: "tts_models/multilingual/multi-dataset/your_tts"
   language: "zh-CN"
   model_size_mb: 50
   inference_latency_ms: 200
   voice_quality: 4.2  # MOS评分
+
+  # pyttsx3配置（系统TTS，默认）
+  pyttsx3:
+    auto_select_chinese_voice: true  # 自动选择中文语音
+    default_rate: 150  # 默认语速
+    default_volume: 1.0  # 默认音量 (0.0-1.0)
+
+  # 语音模板
   templates:
     angle_correct: "注射角度正确，继续保持"
     angle_error: "注射角度{angle}度不正确，请调整至45到90度之间"
