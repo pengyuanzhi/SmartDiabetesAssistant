@@ -1,11 +1,12 @@
 """
-测试摄像头设备
+测试摄像头设备（Windows/Linux/macOS兼容版本）
 
 列出所有可用的摄像头并测试视频流
 """
 
 import cv2
 import sys
+import platform
 
 
 def list_cameras():
@@ -14,8 +15,19 @@ def list_cameras():
 
     available_cameras = []
 
-    for i in range(5):  # 检测前5个设备
-        cap = cv2.VideoCapture(i)
+    # 检测更多设备（最多10个）
+    max_cameras = 10
+
+    for i in range(max_cameras):
+        cap = None
+
+        # Windows: 尝试使用DirectShow后端
+        if platform.system() == "Windows":
+            cap = cv2.VideoCapture(i, cv2.CAP_DSHOW)
+
+        # 如果DirectShow失败，使用默认后端
+        if cap is None or not cap.isOpened():
+            cap = cv2.VideoCapture(i)
 
         if cap.isOpened():
             # 获取摄像头属性
@@ -24,7 +36,7 @@ def list_cameras():
             fps = int(cap.get(cv2.CAP_PROP_FPS))
             backend = cap.getBackendName()
 
-            print(f"✓ 摄像头 {i}:")
+            print(f"[OK] 摄像头 {i}:")
             print(f"  - 分辨率: {width}x{height}")
             print(f"  - 帧率: {fps}")
             print(f"  - 后端: {backend}")
@@ -33,14 +45,14 @@ def list_cameras():
             available_cameras.append(i)
             cap.release()
         else:
-            print(f"✗ 摄像头 {i}: 不可用")
+            print(f"[--] 摄像头 {i}: 不可用")
 
     return available_cameras
 
 
-def test_camera(camera_id: int, duration: int = 10):
+def test_camera_headless(camera_id: int, duration: int = 10):
     """
-    测试指定摄像头
+    测试指定摄像头（无GUI模式）
 
     Args:
         camera_id: 摄像头ID
@@ -48,9 +60,13 @@ def test_camera(camera_id: int, duration: int = 10):
     """
     print(f"\n=== 测试摄像头 {camera_id} ===")
     print(f"测试时长: {duration} 秒")
-    print("按 'q' 键提前退出\n")
+    print("使用无GUI模式（适合Windows服务器）\n")
 
-    cap = cv2.VideoCapture(camera_id)
+    # Windows: 使用DirectShow后端
+    if platform.system() == "Windows":
+        cap = cv2.VideoCapture(camera_id, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(camera_id)
 
     if not cap.isOpened():
         print(f"[错误] 无法打开摄像头 {camera_id}")
@@ -66,46 +82,41 @@ def test_camera(camera_id: int, duration: int = 10):
     fps = int(cap.get(cv2.CAP_PROP_FPS))
 
     print(f"实际分辨率: {width}x{height}")
-    print(f"实际帧率: {fps}\n")
+    print(f"实际帧率: {fps}")
+    print("开始读取帧...\n")
 
     frame_count = 0
     start_time = cv2.getTickCount()
 
-    while True:
-        ret, frame = cap.read()
+    import time
 
-        if not ret:
-            print("[错误] 无法读取帧")
-            break
+    try:
+        # 读取几帧进行测试
+        test_duration = min(duration, 5)  # 最多测试5秒
+        start = time.time()
 
-        frame_count += 1
+        while time.time() - start < test_duration:
+            ret, frame = cap.read()
 
-        # 显示帧
-        cv2.imshow(f'Camera {camera_id} Test', frame)
+            if not ret:
+                print(f"[错误] 无法读取帧（已读取 {frame_count} 帧）")
+                break
 
-        # 计算FPS
-        elapsed = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
-        current_fps = frame_count / elapsed if elapsed > 0 else 0
+            frame_count += 1
 
-        # 在帧上显示信息
-        info_text = f"Frame: {frame_count} | FPS: {current_fps:.1f} | Press 'q' to quit"
-        cv2.putText(
-            frame, info_text, (10, 30),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2
-        )
-        cv2.imshow(f'Camera {camera_id} Test', frame)
+            # 每10帧打印一次进度
+            if frame_count % 10 == 0:
+                elapsed = time.time() - start
+                current_fps = frame_count / elapsed if elapsed > 0 else 0
+                print(f"\r已读取 {frame_count} 帧 | FPS: {current_fps:.1f}", end="")
 
-        # 检查按键
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            print("\n用户中断")
-            break
-        elif elapsed >= duration:
-            print(f"\n达到测试时长 {duration} 秒")
-            break
+        print()  # 换行
+
+    except KeyboardInterrupt:
+        print("\n\n[中断] 用户取消")
 
     # 统计信息
-    total_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
+    total_time = time.time() - start
     avg_fps = frame_count / total_time if total_time > 0 else 0
 
     print(f"\n=== 测试结果 ===")
@@ -113,27 +124,74 @@ def test_camera(camera_id: int, duration: int = 10):
     print(f"总时长: {total_time:.2f} 秒")
     print(f"平均帧率: {avg_fps:.2f} FPS")
 
-    cap.release()
-    cv2.destroyAllWindows()
+    if frame_count > 0:
+        print(f"[成功] 摄像头工作正常")
+    else:
+        print(f"[失败] 摄像头无法读取帧")
 
-    return True
+    cap.release()
+
+    return frame_count > 0
+
+
+def save_test_frame(camera_id: int, output_path: str = "test_frame.jpg"):
+    """
+    保存一帧测试图像
+
+    Args:
+        camera_id: 摄像头ID
+        output_path: 输出文件路径
+    """
+    print(f"\n=== 捕获测试帧 ===")
+
+    # Windows: 使用DirectShow后端
+    if platform.system() == "Windows":
+        cap = cv2.VideoCapture(camera_id, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(camera_id)
+
+    if not cap.isOpened():
+        print(f"[错误] 无法打开摄像头 {camera_id}")
+        return False
+
+    ret, frame = cap.read()
+
+    if ret and frame is not None:
+        cv2.imwrite(output_path, frame)
+        print(f"[成功] 测试帧已保存到: {output_path}")
+        print(f"  帧尺寸: {frame.shape}")
+        cap.release()
+        return True
+    else:
+        print("[错误] 无法读取帧")
+        cap.release()
+        return False
 
 
 def main():
     """主函数"""
-    print("=" * 50)
+    print("=" * 60)
     print("智能糖尿病助手 - 摄像头测试工具")
-    print("=" * 50)
+    print("=" * 60)
+    print(f"平台: {platform.system()} {platform.release()}")
+    print(f"OpenCV: {cv2.__version__}")
+    print(f"Python: {sys.version.split()[0]}")
+    print("=" * 60)
 
     # 列出可用摄像头
     available_cameras = list_cameras()
 
     if not available_cameras:
         print("\n[错误] 未检测到可用的摄像头")
-        print("请检查:")
-        print("  1. 摄像头是否已连接")
-        print("  2. 摄像头驱动是否已安装")
-        print("  3. 摄像头是否被其他程序占用")
+        print("\n故障排查:")
+        print("  1. 确认摄像头已连接到电脑")
+        print("  2. 检查摄像头指示灯是否亮起")
+        print("  3. 关闭其他使用摄像头的程序（Teams, Zoom, Skype等）")
+        print("  4. 在设备管理器中确认摄像头被识别")
+        print("  5. 尝试重启摄像头（拔下USB插头，重新插入）")
+        print("\nWindows用户提示:")
+        print("  - 确保摄像头驱动已安装")
+        print("  - 可以尝试使用DirectShow后端（已自动启用）")
         sys.exit(1)
 
     # 选择摄像头
@@ -151,14 +209,30 @@ def main():
             camera_id = available_cameras[0]
             print(f"输入无效，使用摄像头 {camera_id}")
 
-    # 测试摄像头
-    success = test_camera(camera_id)
+    # 先保存一帧测试图像
+    print("\n" + "=" * 60)
+    save_test_frame(camera_id, f"camera_{camera_id}_test.jpg")
+
+    # 进行无GUI测试
+    print("\n" + "=" * 60)
+    success = test_camera_headless(camera_id)
 
     if success:
-        print("\n[成功] 摄像头测试完成")
-        print(f"\n运行主程序使用: python src/main.py --camera {camera_id}")
+        print("\n" + "=" * 60)
+        print("[成功] 摄像头测试完成")
+        print(f"\n运行主程序:")
+        print(f"  python src/main.py --camera {camera_id}")
+        print(f"  或")
+        print(f"  python scripts/quick_start.py {camera_id}")
+        print("\n提示:")
+        print("  - Windows用户使用DirectShow后端（已自动启用）")
+        print("  - 如遇到显示问题，会自动使用无GUI模式")
     else:
         print("\n[失败] 摄像头测试失败")
+        print("\n建议:")
+        print("  1. 检查test_frame.jpg文件是否生成")
+        print("  2. 尝试其他摄像头ID")
+        print("  3. 查看上面的错误信息")
 
 
 if __name__ == "__main__":
