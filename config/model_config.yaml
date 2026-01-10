@@ -1,0 +1,100 @@
+# 模型配置文件
+
+# 姿态估计模型（用于注射角度检测）
+pose_estimation:
+  model_name: "rtmpose_lite"
+  model_type: "RTMPose"
+  input_resolution: [256, 256]
+  model_path: "models/rtmpose_lite.trt"  # TensorRT引擎路径
+  onnx_path: "models/rtmpose_lite.onnx"  # ONNX模型路径
+  quantization: "INT8"
+  inference_speed_ms: 15  # Jetson Orin Nano
+  model_size_mb: 8
+  keypoints:
+    - shoulder
+    - elbow
+    - wrist
+    - hip
+    - knee
+    - ankle
+  angle_calculation:
+    reference_points: ["shoulder", "elbow", "wrist"]
+    valid_angle_range: [45, 90]  # 注射角度范围
+
+# 目标检测模型（用于注射部位识别）
+object_detection:
+  model_name: "yolov8n_int8"
+  model_type: "YOLOv8"
+  input_resolution: [640, 640]
+  model_path: "models/yolov8n_int8.trt"
+  onnx_path: "models/yolov8n.onnx"
+  quantization: "INT8"
+  inference_speed_ms: 2
+  model_size_mb: 3
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  classes:
+    - id: 0
+      name: "abdomen"
+      chinese_name: "腹部"
+      recommended: true
+    - id: 1
+      name: "thigh"
+      chinese_name: "大腿"
+      recommended: true
+    - id: 2
+      name: "upper_arm"
+      chinese_name: "上臂"
+      recommended: true
+    - id: 3
+      name: "buttock"
+      chinese_name: "臀部"
+      recommended: false
+
+# 光流模型（用于速度监测）
+optical_flow:
+  model_name: "liteflownet"
+  model_path: "models/liteflownet_int8.trt"
+  model_size_mb: 2
+  inference_speed_ms: 10
+  parameters:
+    min_speed_threshold: 0.5  # 像素/帧
+    max_speed_threshold: 10.0
+    injection_duration_min_sec: 5  # 推药最短时间
+    injection_duration_max_sec: 30
+
+# TTS模型
+tts:
+  model_name: "your_tts"
+  provider: "CoquiTTS"
+  model_path: "models/tts_model.pth"
+  config_path: "models/tts_config.json"
+  language: "zh-CN"
+  model_size_mb: 50
+  inference_latency_ms: 200
+  voice_quality: 4.2  # MOS评分
+  templates:
+    angle_correct: "注射角度正确，继续保持"
+    angle_error: "注射角度{angle}度不正确，请调整至45到90度之间"
+    site_correct: "注射部位选择合适"
+    site_warning: "建议选择腹部、大腿或上臂的推荐区域"
+    speed_fast: "注射速度过快，请减慢"
+    speed_slow: "注射速度过慢"
+    complete: "注射完成，请按压注射部位10秒钟"
+    start: "开始监测，请按照标准流程操作"
+
+# 模型优化配置
+optimization:
+  platform: "jetson"  # jetson 或 raspberrypi
+  use_tensorrt: true
+  use_fp16: true  # 半精度浮点
+  use_int8: true  # INT8量化
+  batch_size: 1
+  max_workspace_size: 1GB  # TensorRT工作空间
+
+# 性能目标
+performance_targets:
+  end_to_end_latency_ms: 100
+  real_time_fps: 30
+  total_model_size_mb: 70
+  power_consumption_w: [7, 25]  # [最小, 最大]

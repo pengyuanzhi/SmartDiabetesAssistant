@@ -1,0 +1,58 @@
+# PC端开发调试依赖（精简版）
+
+# 核心框架
+langchain>=0.1.0
+langgraph>=0.0.20
+langchain-core>=0.1.0
+
+# 深度学习（CPU版本，PC调试用）
+torch>=2.0.0
+torchvision>=0.15.0
+onnx>=1.14.0
+onnxruntime>=1.15.0
+
+# 计算机视觉
+opencv-python>=4.8.0
+pillow>=10.0.0
+scikit-image>=0.21.0
+
+# 目标检测和姿态估计
+ultralytics>=8.0.0
+mmpose>=1.0.0
+mmdet>=3.0.0
+openmim>=0.3.0
+
+# 语音处理（使用系统TTS）
+pyttsx3>=2.90  # 跨平台TTS包装器
+pyaudio>=0.2.13
+
+# 数据处理
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.11.0
+
+# 异步编程
+aiofiles>=23.0.0
+
+# 数据库
+sqlalchemy>=2.0.0
+
+# 配置管理
+pydantic>=2.0.0
+pyyaml>=6.0.0
+python-dotenv>=1.0.0
+
+# 日志
+loguru>=0.7.0
+
+# 测试
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# 代码质量
+black>=23.0.0
+flake8>=6.0.0
+
+# 可视化和调试
+matplotlib>=3.7.0
+tqdm>=4.65.0

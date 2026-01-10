@@ -1,0 +1,108 @@
+# 用户配置文件
+
+# 用户信息
+user:
+  id: 1
+  name: "张三"
+  age: 45
+  weight_kg: 70
+  injection_experience: "intermediate"  # beginner, intermediate, advanced
+
+# 注射偏好设置
+injection_preferences:
+  preferred_sites:
+    - "abdomen"  # 腹部
+    - "thigh"    # 大腿
+  preferred_angle_range: [60, 90]  # 度
+  rotation_enabled: true  # 是否启用注射部位轮换提醒
+
+# 提示设置
+feedback_settings:
+  audio_enabled: true
+  audio_volume: 0.7  # 0.0-1.0
+  audio_speed: 1.0  # 语音速度
+  haptic_enabled: true
+  haptic_intensity: 0.8  # 0.0-1.0
+  visual_enabled: true
+  language: "zh-CN"  # 中文
+
+  # 告警敏感度
+  alert_sensitivity:
+    angle_error: "high"  # low, medium, high
+    site_warning: "medium"
+    speed_warning: "high"
+
+  # 重复告警抑制
+  duplicate_alert_suppression:
+    enabled: true
+    time_window_sec: 30  # 30秒内相同告警只提示一次
+
+# 监测规则
+monitoring_rules:
+  angle:
+    min_degrees: 45
+    max_degrees: 90
+    tolerance_degrees: 5
+
+  site:
+    recommended_only: true  # 仅推荐使用推荐的注射部位
+    rotation_reminder: true  # 提醒部位轮换
+
+  speed:
+    insertion_max_speed: 10  # 像素/帧
+    injection_min_duration_sec: 5
+    injection_max_duration_sec: 30
+
+  workflow:
+    enforce_complete_process: true  # 强制完整流程
+    allow_skip_steps: false
+
+# 数据存储设置
+storage_settings:
+  video_retention_days: 90
+  database_path: "data/injection_monitoring.db"
+  video_path: "data/videos"
+  auto_cleanup: true
+
+  # 隐私设置
+  privacy_mode: false  # 隐私模式：不存储视频
+  blur_faces: true  # 自动模糊人脸
+
+# 界面设置
+ui_settings:
+  theme: "light"  # light, dark, auto
+  display_mode: "standard"  # standard, detailed, simple
+  show_realtime_video: true
+  show_skeleton_overlay: true  # 显示骨架叠加
+  show_detection_boxes: true  # 显示检测框
+
+# 高级设置
+advanced_settings:
+  debug_mode: false
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  performance_monitoring: true
+  auto_update_check: false  # 禁用自动更新检查（本地设备）
+
+  # 模型加载策略
+  model_loading:
+    preload_all_models: true
+    use_gpu: true
+    tensorrt_optimization: true
+
+# 个性化设置（可AI学习）
+personalization:
+  learning_enabled: false  # 是否启用个性化学习
+  adaptation_rate: 0.1  # 适应速率
+
+  # 用户行为模式
+  behavior_patterns:
+    typical_injection_time: "08:00"
+    preferred_duration_sec: 10
+    common_errors: []  # 常见错误类型
+
+# 统计和报告
+statistics:
+  track_success_rate: true
+  track_accuracy_trends: true
+  generate_weekly_report: false
+  reminder_schedule: "disabled"  # disabled, daily, weekly

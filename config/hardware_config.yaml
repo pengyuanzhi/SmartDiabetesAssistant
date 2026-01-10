@@ -1,0 +1,165 @@
+# 硬件配置文件
+
+# 主控平台配置
+platform:
+  type: "jetson"  # jetson 或 raspberrypi
+  model: "Orin Nano"
+  cpu_cores: 6
+  gpu_cores: 1024
+  memory_gb: 8
+  ai_performance_tops: 67
+  power_modes:
+    - name: "performance"
+      power_w: 25
+      cpu_freq: "max"
+      gpu_freq: "max"
+    - name: "balanced"
+      power_w: 15
+      cpu_freq: "medium"
+      gpu_freq: "medium"
+    - name: "power_save"
+      power_w: 7
+      cpu_freq: "min"
+      gpu_freq: "min"
+
+# 摄像头配置
+cameras:
+  main_camera:
+    model: "Sony IMX500"
+    interface: "MIPI CSI"
+    resolution: [4592, 3512]  # 有效像素
+    operation_resolution: [1920, 1080]  # 工作分辨率
+    fps: 30
+    format: "RGB"
+    features:
+      on_device_ai: true
+      auto_exposure: true
+      auto_white_balance: true
+    device_path: "/dev/video0"
+
+  auxiliary_camera:
+    model: "Pi Camera Module 3"
+    interface: "CSI"
+    resolution: [1920, 1080]
+    fps: 30
+    field_of_view: 120  # 度
+    device_path: "/dev/video1"
+
+# 显示屏配置
+display:
+  model: "Waveshare 4.3 inch OLED"
+  interface: "HDMI"
+  resolution: [800, 480]
+  touchscreen: true
+  backlight_control: true
+  auto_brightness: true
+
+# 音频系统配置
+audio:
+  output_device: "MAX98357A I2S amplifier"
+  interface: "I2S"
+  power: 3  # 瓦特
+  sample_rate: 22050
+  channels: 1
+  volume_levels:
+    low: 0.3
+    medium: 0.6
+    high: 1.0
+
+# 触觉反馈配置
+haptic:
+  motor_model: "Precision Microdrives 10mm LRA"
+  driver_chip: "DRV2605L"
+  interface: "I2C"
+  voltage: 3.3
+  frequency_hz: 170-200
+  patterns:
+    gentle_reminder:
+      intensity: 30
+      duration_ms: 200
+    strong_warning:
+      intensity: 100
+      duration_ms: 1000
+    double_click:
+      intensity: 50
+      sequence: [[30, 50], [30, 50]]
+    gradual:
+      intensities: [20, 40, 60, 80, 100]
+      duration_step_ms: 100
+
+# 电源管理配置
+power:
+  battery:
+    type: "LiPo"
+    capacity_mah: 5000
+    cells: 3  # 3S配置
+    voltage: 11.1
+    energy_wh: 55.5
+
+  bms:
+    chip: "BQ40Z50"
+    interface: "I2C"
+    features:
+      - fuel_gauging
+      - temperature_protection
+      - short_circuit_protection
+      - overcharge_protection
+
+  power_modes:
+    active:
+      power_w: 25
+      cpu_freq: "max"
+      gpu_freq: "max"
+    monitoring:
+      power_w: 15
+      cpu_freq: "medium"
+      gpu_freq: "medium"
+    standby:
+      power_w: 7
+      cpu_freq: "min"
+      gpu_freq: "min"
+    sleep:
+      power_w: 1
+      wake_on: ["motion", "touch", "timer"]
+
+  estimated_battery_life:
+    continuous_work_hours: 2
+    typical_injections_per_charge: 10
+    standby_hours: 24
+
+# 传感器配置
+sensors:
+  imu:
+    model: "ICM-20948"
+    interface: "I2C"
+    features:
+      - accelerometer
+      - gyroscope
+      - magnetometer
+   用途: "设备姿态检测，手持稳定性评估"
+
+  ambient_light:
+    model: "BH1750"
+    interface: "I2C"
+    用途: "自动调节屏幕亮度"
+
+  human_presence:
+    model: "RCWL-0516"
+    interface: "GPIO"
+    detection_range_m: 5
+    用途: "智能唤醒"
+
+# GPIO引脚配置（Raspberry Pi）
+gpio_pins:
+  camera_trigger: 17
+  vibration_motor: 18
+  led_status: 27
+  button_start: 22
+  button_stop: 23
+
+# I2C设备地址
+i2c_addresses:
+  haptic_driver: 0x5A
+  light_sensor: 0x23
+  imu: 0x69
+  bms: 0x0B
