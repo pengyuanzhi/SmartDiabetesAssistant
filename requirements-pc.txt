@@ -16,16 +16,21 @@ opencv-python>=4.8.0
 pillow>=10.0.0
 scikit-image>=0.21.0
 
-# 目标检测和姿态估计（使用OpenMMLab系列）
-openmim>=0.3.0
-# 注意：mmpose和mmdet需要通过openmim安装
-# 在安装此文件后运行: mim install mmpose mmdet
+# 目标检测（使用YOLOv8）
+ultralytics>=8.0.0
 
-ultralytics>=8.0.0  # YOLOv8
-
-# 语音处理（使用系统TTS）
+# 语音处理（使用系统TTS，避免复杂依赖）
 pyttsx3>=2.90  # 跨平台TTS包装器
-pyaudio>=0.2.13  # 可能需要额外安装PortAudio
+
+# pyaudio需要额外安装（可选）
+# Windows: pip install pipwin && pipwin install pyaudio
+# Linux: sudo apt install python3-pyaudio
+# macOS: brew install portaudio && pip install pyaudio
+
+# Coqui TTS（可选，提供更自然的语音）
+# 注意: 首次使用会自动下载模型（约50MB）
+# 安装可能需要额外依赖，建议先使用pyttsx3
+# TTS>=0.22.0
 
 # 数据处理
 numpy>=1.24.0
@@ -49,6 +54,7 @@ loguru>=0.7.0
 # 测试
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
 
 # 代码质量
 black>=23.0.0
@@ -62,4 +68,4 @@ tqdm>=4.65.0
 # 1. tensorrt 仅在 Jetson 设备上可用
 # 2. tflite-runtime 仅在 Linux ARM 上可用
 # 3. 硬件相关库（gpiozero, RPi.GPIO）仅在 Raspberry Pi 上需要
-# 4. 如需完整功能，请在实际硬件上使用 requirements.txt
+# 4. Coqui TTS (TTS) 安装可能失败，建议先使用系统TTS (pyttsx3)
