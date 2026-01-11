@@ -38,9 +38,13 @@ class YOLOTester:
         """检查ultralytics是否安装"""
         print("\n=== 检查依赖 ===\n")
         try:
-            from ultralytics import YOLO
+            import ultralytics
             print("✓ ultralytics已安装")
-            print(f"  版本: {YOLO.__version__}")
+            try:
+                version = ultralytics.__version__
+                print(f"  版本: {version}")
+            except AttributeError:
+                print("  版本: 未知（无法获取版本信息）")
             return True
         except ImportError:
             print("✗ ultralytics未安装")
