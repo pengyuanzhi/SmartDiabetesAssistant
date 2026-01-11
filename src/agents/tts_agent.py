@@ -214,7 +214,55 @@ class TTSAgent:
 
     async def _play_audio_file(self, file_path: str) -> None:
         """
-        播放音频文件
+        播放音频文件（使用PyAudio直接播放）
+
+        Args:
+            file_path: 音频文件路径
+        """
+        from pathlib import Path
+        import wave
+
+        if not Path(file_path).exists():
+            print(f"[TTSAgent] 文件不存在: {file_path}")
+            return
+
+        try:
+            # 使用PyAudio直接播放
+            wf = wave.open(str(file_path), 'rb')
+
+            import pyaudio
+            p = pyaudio.PyAudio()
+
+            # 打开输出流
+            stream = p.open(
+                format=p.get_format_from_width(wf.getsampwidth()),
+                channels=wf.getnchannels(),
+                rate=wf.getframerate(),
+                output=True
+            )
+
+            # 读取并播放音频数据
+            CHUNK = 1024
+            data = wf.readframes(CHUNK)
+
+            while len(data) > 0:
+                stream.write(data)
+                data = wf.readframes(CHUNK)
+
+            # 清理
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+            wf.close()
+
+        except Exception as e:
+            print(f"[TTSAgent] PyAudio播放失败: {e}")
+            # 降级到系统播放器
+            self._play_audio_file_fallback(file_path)
+
+    def _play_audio_file_fallback(self, file_path: str) -> None:
+        """
+        使用系统播放器播放音频（降级方案）
 
         Args:
             file_path: 音频文件路径
@@ -223,17 +271,17 @@ class TTSAgent:
 
         try:
             if system == "Windows":
-                import winsound
-                winsound.PlaySound(file_path, winsound.SND_FILENAME)
+                import subprocess
+                subprocess.run(["powershell", "-c", f"(New-Object Media.SoundPlayer '{file_path}').PlaySync()"], check=True)
             elif system == "Darwin":  # macOS
                 import subprocess
-                subprocess.run(["afplay", file_path], check=True)
+                subprocess.run(["afplay", str(file_path)], check=True)
             else:  # Linux
                 import subprocess
-                subprocess.run(["aplay", file_path], check=True)
+                subprocess.run(["aplay", str(file_path)], check=True)
 
         except Exception as e:
-            print(f"[TTSAgent] 音频播放失败: {e}")
+            print(f"[TTSAgent] 系统播放器也失败: {e}")
 
     def _get_speed_by_urgency(self, urgency: str) -> float:
         """
