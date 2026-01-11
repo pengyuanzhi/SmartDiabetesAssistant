@@ -21,10 +21,13 @@ ultralytics>=8.0.0
 
 # 语音处理（使用系统TTS，避免复杂依赖）
 pyttsx3>=2.90  # 跨平台TTS包装器
+pyaudio>=0.2.13  # 音频播放和录制
 
-# pyaudio需要额外安装（可选）
-# Windows: pip install pipwin && pipwin install pyaudio
-# Linux: sudo apt install python3-pyaudio
+# 注意：PyAudio在Windows上可能需要额外安装步骤
+# Windows安装方法：
+#   方法1: pip install pipwin && pipwin install pyaudio
+#   方法2: 下载预编译wheel: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
+# Linux: sudo apt-get install python3-pyaudio portaudio19-dev
 # macOS: brew install portaudio && pip install pyaudio
 
 # Coqui TTS（可选，提供更自然的语音）
