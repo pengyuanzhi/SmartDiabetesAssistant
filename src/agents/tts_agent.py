@@ -14,6 +14,7 @@ import platform
 from typing import Dict, Any, Optional
 from pathlib import Path
 import yaml
+import threading
 
 import numpy as np
 
@@ -44,6 +45,12 @@ class TTSAgent:
 
         # 语音模板
         self.templates = self.config.get("tts", {}).get("templates", {})
+
+        # 播放队列（用于pyttsx3的顺序播放）
+        self._play_queue = asyncio.Queue()
+        self._is_playing = False
+        self._play_task = None
+        self._play_lock = threading.Lock()
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件"""
@@ -121,13 +128,6 @@ class TTSAgent:
                     "delay": float  # 延迟（秒）
                 }
         """
-        # 确保引擎已加载
-        self._load_engine()
-
-        if self.tts_engine is None:
-            print("[TTSAgent] TTS引擎不可用，跳过语音播放")
-            return
-
         # 提取参数
         message = feedback.get("message", "")
         urgency = feedback.get("urgency", "medium")
@@ -142,36 +142,83 @@ class TTSAgent:
 
         print(f"[TTSAgent] 播放语音: {message} (紧急度: {urgency})")
 
-        # 根据TTS类型播放
-        if self.tts_type == "pyttsx3":
-            await self._speak_pyttsx3(message, urgency)
-        elif self.tts_type == "coqui":
-            await self._speak_coqui(message, urgency)
+        # 直接使用pyttsx3播放（每次创建新引擎）
+        await self._speak_pyttsx3(message, urgency)
 
     async def _speak_pyttsx3(self, text: str, urgency: str) -> None:
         """
-        使用pyttsx3播放语音
+        使用pyttsx3播放语音（每次创建新引擎）
 
         Args:
             text: 要播放的文本
             urgency: 紧急程度
         """
         try:
+            import pyttsx3
+            import concurrent.futures
+
             # 根据紧急程度调整语速
-            rate = self._get_rate_by_urgency(urgency)
+            rate_multiplier = self._get_rate_by_urgency(urgency)
+            base_rate = 200
+            new_rate = int(base_rate * rate_multiplier)
 
-            # 设置语速
-            current_rate = self.tts_engine.getProperty('rate')
-            self.tts_engine.setProperty('rate', int(current_rate * rate))
+            print(f"[TTSAgent] 播放语音: {text} (语速: {new_rate})")
 
-            # 播放语音
-            self.tts_engine.say(text)
-            self.tts_engine.runAndWait()
-
-            print("[TTSAgent] 语音播放完成")
+            # 使用ThreadPoolExecutor执行
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(self._play_pyttsx3_sync, text, new_rate)
+                try:
+                    # 等待播放完成，设置超时防止卡住
+                    result = future.result(timeout=10)
+                    if result:
+                        print(f"[TTSAgent] 语音播放完成")
+                    else:
+                        print(f"[TTSAgent] 语音播放失败")
+                except concurrent.futures.TimeoutError:
+                    print(f"[TTSAgent] 播放超时")
+                    future.cancel()
 
         except Exception as e:
             print(f"[TTSAgent] pyttsx3播放失败: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _play_pyttsx3_sync(self, text: str, rate: int) -> bool:
+        """
+        同步播放pyttsx3（在单独线程中执行）
+
+        Args:
+            text: 要播放的文本
+            rate: 语速
+
+        Returns:
+            是否成功
+        """
+        engine = None
+        try:
+            import pyttsx3
+
+            # 创建新引擎
+            engine = pyttsx3.init()
+            engine.setProperty('rate', rate)
+
+            # 播放
+            engine.say(text)
+            engine.runAndWait()
+
+            return True
+
+        except Exception as e:
+            print(f"[TTSAgent] 线程中播放失败: {e}")
+            return False
+
+        finally:
+            # 清理引擎
+            if engine:
+                try:
+                    engine.stop()
+                except:
+                    pass
 
     async def _speak_coqui(self, text: str, urgency: str) -> None:
         """
